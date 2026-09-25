@@ -2,7 +2,7 @@
 
 # 🌐 God's Eye View — Extended
 
-### A fork of Bilawal Sidhu's God's Eye View, adding four data layers and a dev-sharing fix.
+### A fork of Bilawal Sidhu's God's Eye View, adding three data layers and a dev-sharing fix.
 
 </div>
 
@@ -31,7 +31,6 @@
 | 📰 | **News layer** — a day of a country's news, pinned inside its own borders | GDELT DOC 2.0, ingested locally to SQLite | ✅ | `n` |
 | 🌊 | **Wiki Pulse layer** — ambient live Wikipedia edit activity worldwide | Wikimedia EventStreams `recentchange` | ✅ | `p` |
 | 🏛️ | **Indian History layer** — 49 powers from the Nandas to the British Raj | Bundled local dataset (original) | ✅ | `h` |
-| 📹 | **Minnesota DOT camera pack** — Twin Cities metro traffic cameras | MnDOT 511mn.org + CARS Program | ✅ | env |
 | 🗺️ | **Natural Earth country polygons** — supporting data for News placement | Natural Earth 1:10m (public domain) | ✅ | — |
 | ☁️ | **Cloudflare quick-tunnel support** — share the dev server over a public URL | — | ✅ | — |
 
@@ -122,25 +121,6 @@ is **original work, hand-traced for this project** — MIT licensed like the cod
 rather than copying it. See its [SOURCE.md](src/data/local_data/indian_history/SOURCE.md) for full
 provenance and the era/kingdom breakdown.
 
-## 📹 Minnesota DOT camera pack
-
-Adds Twin Cities metro traffic cameras to the existing CCTV layer. MnDOT publishes no public API, so
-the catalog is assembled by replaying the internal GraphQL endpoint 511mn.org's own site uses. Because
-that query carries no coordinates, each kept camera's position is resolved from a server-generated
-Google Static Maps URL already embedded in the response — **no Google Maps key is used or required**
-for this.
-
-That per-camera lookup is the one thing this pack does that the Austin / Caltrans / TfL packs don't,
-so its request fan-out is bounded and capped before it runs:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `CCTV_MNDOT_ENABLED` | on | Set to `0` to disable the pack entirely |
-| `CCTV_MNDOT_MAX_SOURCES` | 60 (floor 8) | Caps the per-camera position lookups |
-
-Frames come from `public.carsprogram.org`, the multi-state
-[CARS Program](https://www.carsprogram.org/) platform.
-
 ## 🗺️ Natural Earth country polygons
 
 `src/data/local_data/natural_earth/countries.json` — 233 countries, 2,945 outer rings, 2.95 MB, built
@@ -185,7 +165,7 @@ src/data/wikiPulse*.js               Wiki Pulse layer, placement, presentation
 src/data/indianHistory*.js           Indian History layer + presentation
 src/data/local_data/indian_history/  Bundled kingdoms dataset (original, MIT)
 vite.config.js                       /api/news, /api/news/calendar, /api/wikipulse proxies;
-                                     MnDOT camera source; allowedHosts for quick tunnels
+                                     allowedHosts for quick tunnels
 src/data/layerState.js               Registers the n / p / h layer toggles
 ```
 
@@ -208,7 +188,7 @@ Each new module ships unit tests alongside it (`*.test.mjs`); run everything wit
   your own credentials.
 
 Additions in this fork cite their own sources: **GDELT Project** (citation + link required),
-**Wikimedia EventStreams** (CC0), **Natural Earth** (public domain), **Minnesota DOT — 511mn.org**.
+**Wikimedia EventStreams** (CC0), and **Natural Earth** (public domain).
 Full per-source license and attribution summary: **[DATA_SOURCES.md](DATA_SOURCES.md)**.
 
 Upstream's boundary applies here too: this project models **events, assets, infrastructure, and
