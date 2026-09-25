@@ -20,6 +20,24 @@ Photorealistic 3D globe. Live aircraft, ships, satellites, earthquakes, traffic,
 
 ---
 
+> ## 🙏 Credit: a fork of Bilawal Sidhu's God's Eye View
+>
+> This repository is a **derivative work** of **[bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view)**,
+> created by **[Bilawal Sidhu](https://github.com/bilawalsidhu)** ([@bilawalsidhu](https://www.youtube.com/@bilawalsidhu) on YouTube).
+> The original design, architecture, and the overwhelming majority of this code are **his work**, released
+> under the [MIT License](LICENSE). Full credit and thanks to him.
+>
+> **Please star and follow the original project → [github.com/bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view)**
+>
+> **What this fork adds:** a GDELT-backed news layer, a Wikimedia *Wiki Pulse* live-edit feed, an
+> Indian-history location layer, and Cloudflare quick-tunnel support for dev sharing.
+>
+> Upstream is tracked as the `upstream` git remote. Bundled datasets, 3D models, and the capture GIFs
+> are **not** MIT-licensed and remain under their original terms — see [LICENSE](LICENSE),
+> [DATA_SOURCES.md](DATA_SOURCES.md), and [media provenance](docs/media/README.md).
+
+---
+
 <div align="center">
 
 **[Quick Start](#-quick-start) · [First Five Minutes](#-the-first-five-minutes) · [Talk to It](#-talk-to-it) · [What's Live](#-whats-on-the-globe) · [Under the Hood](#-under-the-hood) · [Keys & Costs](#-api-keys)**

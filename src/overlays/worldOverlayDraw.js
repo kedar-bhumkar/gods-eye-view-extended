@@ -260,6 +260,61 @@ function trackDisplayText(entry) {
   return entry._overlayTrackDisplayText || '';
 }
 
+/** Side of the square close-glyph hit area, in card pixels. */
+export const OVERLAY_CLOSE_SIZE_PX = 18;
+const OVERLAY_CLOSE_INSET_PX = 3;
+
+/**
+ * The close glyph's box inside a card rect (same space as the rect).
+ * @param {{x:number,y:number,w:number,h:number}} rect Card rect.
+ * @returns {{x:number,y:number,w:number,h:number}} Close-glyph box.
+ */
+export function overlayCloseRect(rect) {
+  return {
+    x: rect.x + rect.w - OVERLAY_CLOSE_SIZE_PX - OVERLAY_CLOSE_INSET_PX,
+    y: rect.y + OVERLAY_CLOSE_INSET_PX,
+    w: OVERLAY_CLOSE_SIZE_PX,
+    h: OVERLAY_CLOSE_SIZE_PX,
+  };
+}
+
+/**
+ * True when (x, y) falls on a closable card's close glyph.
+ * @param {{x:number,y:number,w:number,h:number}} rect Card rect from a hit test.
+ * @param {number} x Pointer x in the same space.
+ * @param {number} y Pointer y in the same space.
+ * @returns {boolean}
+ */
+export function isOverlayCloseHit(rect, x, y) {
+  if (!rect) return false;
+  const box = overlayCloseRect(rect);
+  // A few pixels of slop: the glyph is small and this is a click target.
+  const slop = 3;
+  return x >= box.x - slop && x <= box.x + box.w + slop && y >= box.y - slop && y <= box.y + box.h + slop;
+}
+
+function drawCloseGlyph(ctx, entry, placement) {
+  const box = overlayCloseRect(placement.rect);
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const arm = 4;
+  ctx.save();
+  ctx.beginPath();
+  roundedRectPath(ctx, box.x, box.y, box.w, box.h, 3);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.fill();
+  ctx.strokeStyle = WORLD_OVERLAY_STYLE.title;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - arm, cy - arm);
+  ctx.lineTo(cx + arm, cy + arm);
+  ctx.moveTo(cx + arm, cy - arm);
+  ctx.lineTo(cx - arm, cy + arm);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /**
  * Measure the selected entry variant into a caller-owned layout object.
  * @param {CanvasRenderingContext2D} ctx
@@ -317,7 +372,9 @@ export function measureOverlayEntry(ctx, entry, out = {}) {
     out.w = out.thumbW + out.padX * 2;
     out.h = out.padY + out.thumbH + out.titleGap + out.titleH + out.padBottom;
   } else {
-    out.w = Math.ceil(Math.max(titleWidth, detailWidth)) + out.padX * 2;
+    // A closable card reserves room beside the title for its close glyph.
+    const closeReserve = entry?.closable ? OVERLAY_CLOSE_SIZE_PX + 8 : 0;
+    out.w = Math.ceil(Math.max(titleWidth + closeReserve, detailWidth)) + out.padX * 2;
     out.h = out.padY * 2 + out.titleH + details.length * out.lineH;
   }
   out.w = Math.max(8, out.w);
@@ -611,6 +668,7 @@ export function paintCard(ctx, entry, placement, alpha = 1) {
   ctx.globalAlpha = alpha;
   drawCardChrome(ctx, entry, placement, false);
   drawCardText(ctx, entry, placement, false);
+  if (entry.closable) drawCloseGlyph(ctx, entry, placement);
   ctx.restore();
   return placement.rect;
 }
@@ -675,6 +733,7 @@ export function paintSelected(ctx, entry, placement, alpha = 1) {
   ctx.globalAlpha = alpha;
   drawCardChrome(ctx, entry, placement, true);
   drawCardText(ctx, entry, placement, true);
+  if (entry.closable) drawCloseGlyph(ctx, entry, placement);
   ctx.restore();
   return placement.rect;
 }

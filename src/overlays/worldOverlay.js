@@ -441,6 +441,9 @@ export function normalizeOverlayEntry(sourceId, entry) {
         variant,
       }) * 10,
     interactive: entry.interactive === true,
+    // Opt-in ✕ in the top-right corner; the source hit-tests it with
+    // isOverlayCloseHit() against the rect hitTestWorldOverlay() returns.
+    closable: entry.closable === true,
     accessibilityLabel: String(entry.accessibilityLabel || '').trim(),
     activate: typeof entry.activate === 'function' ? entry.activate : null,
     minDistance: Number.isFinite(Number(entry.minDistance)) ? Math.max(0, Number(entry.minDistance)) : 0,

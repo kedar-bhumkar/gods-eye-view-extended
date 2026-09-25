@@ -18,6 +18,8 @@
  *  13. Weather effects — camera-local Open-Meteo observations without news/geocoding overhead
  *  14. Rocket launches — recent Launch Library 2 mission metadata
  *  15. Radio Browser — public-domain station directory and click counting
+ *  16. News — read-only SQLite reader over the locally ingested GDELT database
+ *  17. Wiki Pulse — keyless SSE relay of Wikimedia's public recentchange feed
  *
  * Also exposes Cesium and Google 3D Tiles API keys to the
  * client via `import.meta.env.*` defines.
@@ -28,6 +30,7 @@
 import fs from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import https from 'node:https';
@@ -52,6 +55,7 @@ import {
 } from './src/data/regionalBrief.js';
 import { normalizeAdsbLolPointResponse } from './src/data/adsbLolFallback.js';
 import { createAisStreamAdapter, isRecognizedAisEnvelope } from './src/data/aisStreamAdapter.js';
+import { redactUser as redactWikiPulseUser } from './src/data/wikiPulsePresentation.js';
 import { parseSilenceTimeoutEnv } from './src/data/aisWatchdog.js';
 import {
   fetchTerrainChunkWithRetry,
@@ -3440,6 +3444,46 @@ const TFL_JAMCAM_URL = 'https://api.tfl.gov.uk/Place/Type/JamCam';
 const TFL_IMAGE_ORIGIN = 'https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/';
 const DEFAULT_TFL_MAX_SOURCES = 250;
 const LONDON_CENTER = { lat: 51.5074, lon: -0.1278 };
+/**
+ * Minnesota DOT cameras (511mn.org). No public API is published for this
+ * site — these two queries were reverse-engineered from its own bundled JS
+ * (2026-09-09) by capturing what the site's own camera-list and map-pin
+ * views send to their internal GraphQL endpoint.
+ */
+const MNDOT_GRAPHQL_URL = 'https://511mn.org/api/graphql';
+/** Bbox-filtered, paginated camera catalog. Titles and image URLs — no coordinates. */
+const MNDOT_LIST_QUERY = 'query ($input: ListArgs!) { listCameraViewsQuery(input: $input) '
+  + '{ cameraViews { title uri url parentCollection { uri location { routeDesignator } } } '
+  + 'totalRecords error { message type } } }';
+/**
+ * Per-camera coordinate lookup. The list query above carries no lat/lon, so
+ * each kept camera needs one of these. The response embeds a server-generated
+ * Google Static Maps URL; only its `center=lat,lon` parameter is read — no
+ * Google Maps key is used or required on our end, MnDOT's own server already
+ * spent one building that URL.
+ */
+const MNDOT_MODAL_QUERY = 'query ( $entitySlug: String! $entityId: ID! $zooms: [Int!]! '
+  + '$xMapDimensionPx: Int! $yMapDimensionPx: Int! $clientBaseUrl: String! ) '
+  + '{ listMapModalQuery(entitySlug: $entitySlug, entityId: $entityId) { feature { uri title color icon '
+  + 'location { routeDesignator } lastUpdated { timestamp timezone } ... on Camera { views { uri } } '
+  + 'staticGoogleImages( zooms: $zooms xMapDimensionPx: $xMapDimensionPx yMapDimensionPx: $yMapDimensionPx '
+  + 'clientBaseUrl: $clientBaseUrl ) { staticGoogleImageUrls { url zoom } defaultZoom } } } }';
+/** Twin Cities downtown-core bbox — dense enough that one page covers the
+ *  metro without statewide pagination (MN has ~1,942 cameras total). */
+const DEFAULT_MNDOT_BBOX = {
+  west: -93.45, south: 44.85, east: -92.95, north: 45.15,
+};
+/** Candidates fetched per catalog refresh, BEFORE per-camera geocoding (see
+ *  loader JSDoc) — kept modest since, unlike every other pack here, each one
+ *  costs its own upstream request. */
+const MNDOT_LIST_FETCH_LIMIT = 80;
+const DEFAULT_MNDOT_MAX_SOURCES = 60;
+/** Bounds the per-camera coordinate-lookup fan-out. */
+const MNDOT_MODAL_CONCURRENCY = 10;
+const MNDOT_ANCHORS = [
+  { lat: 44.9778, lon: -93.2650 }, // Minneapolis
+  { lat: 44.9537, lon: -93.0900 }, // St. Paul
+];
 /** Camera CATALOGS change rarely; 15 min keeps multi-megabyte upstream list refetches (Austin rows.json + 4 Caltrans districts + TfL) infrequent. Frames are fetched per-request and are unaffected. */
 const CCTV_SOURCE_CACHE_MS = 15 * 60 * 1000;
 /** Per-provider catalog-fetch timeout. Bounds the worst-case refresh so one
@@ -4066,6 +4110,170 @@ async function loadTflSourcesFromOpenData() {
 }
 
 /**
+ * Fetch Minnesota DOT (511mn.org) traffic cameras for the Twin Cities metro.
+ *
+ * 511mn.org has no published public API; this replays the same internal
+ * GraphQL endpoint its own site uses (see MNDOT_LIST_QUERY/MNDOT_MODAL_QUERY
+ * JSDoc). Two round trips per camera kept, unlike every other pack here:
+ *
+ *  1. `listCameraViewsQuery`, bbox-filtered to the Twin Cities core, returns
+ *     titles and image URLs but — unlike Austin/Caltrans/TfL — NO coordinates.
+ *  2. One `listMapModalQuery` per candidate camera resolves its lat/lon (see
+ *     MNDOT_MODAL_QUERY JSDoc for how, without a Google key on our end).
+ *
+ * Step 2 is fetched in bounded batches (MNDOT_MODAL_CONCURRENCY) since it is
+ * one request per camera, not one request per catalog. The candidate list is
+ * capped at MNDOT_LIST_FETCH_LIMIT BEFORE that fan-out (not after, like the
+ * other packs' distance-prioritization) specifically to bound it; the bbox is
+ * drawn tight around the Twin Cities core so an unprioritized first-page cut
+ * is already a reasonable "densest core" set. `prioritizeSources` still runs
+ * afterward for consistency with every other pack, against real coordinates.
+ *
+ * Images are served from a second, simple, unauthenticated host —
+ * public.carsprogram.org, the multi-state "CARS Program" platform — which is
+ * the one part of this integration that behaves like a normal public feed.
+ * HLS video sources exist too but this pack is stills-first, matching TfL.
+ *
+ * @param {object} [deps] Injection seam for tests — real callers omit this.
+ * @param {typeof fetch} [deps.fetchImpl] Fetch implementation (defaults to global fetch).
+ * @returns {Promise<Array<object>>} Normalized camera source objects.
+ */
+export async function loadMnDotSourcesFromOpenData({ fetchImpl = fetch } = {}) {
+  try {
+    const bbox = DEFAULT_MNDOT_BBOX;
+    const listResp = await fetchImpl(MNDOT_GRAPHQL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        query: MNDOT_LIST_QUERY,
+        variables: {
+          input: {
+            west: bbox.west,
+            south: bbox.south,
+            east: bbox.east,
+            north: bbox.north,
+            sortDirection: 'DESC',
+            sortType: 'ROADWAY',
+            freeSearchTerm: '',
+            classificationsOrSlugs: [],
+            recordLimit: MNDOT_LIST_FETCH_LIMIT,
+            recordOffset: 0,
+          },
+        },
+      }),
+      signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+    });
+    if (!listResp.ok) {
+      console.warn('[CCTV] MnDOT camera list failed:', listResp.status);
+      return [];
+    }
+    const listJson = await listResp.json();
+    const views = listJson?.data?.listCameraViewsQuery?.cameraViews;
+    if (!Array.isArray(views) || !views.length) return [];
+
+    // One view per physical camera in every observed sample; dedupe by parent
+    // defensively in case the catalog ever adds multi-angle cameras.
+    const byParent = new Map();
+    for (const view of views) {
+      const parentUri = String(view?.parentCollection?.uri || '');
+      const parentId = parentUri.split('/').pop();
+      const imageUrl = String(view?.url || '');
+      // Official-host pin (design precedent: Caltrans/TfL do the same for
+      // their image origins) — also drops rows with no still image.
+      if (!parentId || !imageUrl.startsWith('https://public.carsprogram.org/')) continue;
+      if (!byParent.has(parentId)) {
+        byParent.set(parentId, {
+          parentId,
+          title: String(view?.title || '').trim(),
+          imageUrl,
+        });
+      }
+    }
+    const candidates = Array.from(byParent.values());
+    if (!candidates.length) return [];
+
+    // Bounded-concurrency coordinate lookup — see JSDoc. One camera's modal
+    // query failing drops just that camera, never the whole pack.
+    const resolved = [];
+    for (let i = 0; i < candidates.length; i += MNDOT_MODAL_CONCURRENCY) {
+      const batch = candidates.slice(i, i + MNDOT_MODAL_CONCURRENCY);
+      // eslint-disable-next-line no-await-in-loop
+      const settled = await Promise.allSettled(batch.map(async (candidate) => {
+        const resp = await fetchImpl(MNDOT_GRAPHQL_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            query: MNDOT_MODAL_QUERY,
+            variables: {
+              entitySlug: 'camera',
+              entityId: candidate.parentId,
+              zooms: [13],
+              xMapDimensionPx: 400,
+              yMapDimensionPx: 300,
+              clientBaseUrl: 'https://511mn.org',
+            },
+          }),
+          signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+        });
+        if (!resp.ok) throw new Error(`modal HTTP ${resp.status}`);
+        const json = await resp.json();
+        const urls = json?.data?.listMapModalQuery?.feature?.staticGoogleImages?.staticGoogleImageUrls;
+        const url = Array.isArray(urls) ? String(urls[0]?.url || '') : '';
+        const match = /center=([-0-9.]+)%2C([-0-9.]+)/.exec(url) || /center=([-0-9.]+),([-0-9.]+)/.exec(url);
+        if (!match) throw new Error('no center coordinate in modal response');
+        return { ...candidate, lat: Number(match[1]), lon: Number(match[2]) };
+      }));
+      for (const outcome of settled) {
+        if (outcome.status === 'fulfilled') resolved.push(outcome.value);
+      }
+    }
+
+    const cameras = resolved
+      .filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lon))
+      .map((c) => {
+        const cameraId = `mn-${c.parentId}`;
+        // Free-form title text ("I-694: I-694 EB @ Silver Lake Rd") — only
+        // explicit travel forms count (allowBare=false), same policy as
+        // Austin's name-inferred fallback heading.
+        const heading = directionToHeading(c.title);
+        const hasHeading = Number.isFinite(heading);
+        return {
+          id: cameraId,
+          name: c.title || `MnDOT Camera ${c.parentId}`,
+          city: 'Twin Cities Metro',
+          cityId: 'twin-cities',
+          provider: 'Minnesota DOT (511mn.org)',
+          lat: c.lat,
+          lon: c.lon,
+          headingDeg: hasHeading ? heading : fallbackHeadingFromId(cameraId),
+          headingConfidence: hasHeading ? 'high' : 'low',
+          // Same fabricated pose personalities as Austin/Caltrans (design
+          // §1a): RAW PRIOR starting points, not measured truth.
+          pitchDeg: hasHeading ? -24 : -18,
+          fovDeg: hasHeading ? 56 : 44,
+          rangeM: hasHeading ? 210 : 145,
+          mountHeightM: hasHeading ? 10 : 8,
+          groundElevationM: 260, // Twin Cities metro prior; one-shot snap corrects.
+          feedType: 'image',
+          url: c.imageUrl,
+          snapshotUrl: c.imageUrl,
+          sourceKind: 'mndot-511',
+          license: 'Public MnDOT traffic camera frame (511mn.org / CARS Program)',
+        };
+      });
+
+    const maxRaw = Number(process.env.CCTV_MNDOT_MAX_SOURCES || DEFAULT_MNDOT_MAX_SOURCES);
+    const maxCount = Number.isFinite(maxRaw) ? Math.max(8, Math.min(200, Math.floor(maxRaw))) : DEFAULT_MNDOT_MAX_SOURCES;
+    const prioritized = prioritizeSources(cameras, maxCount, MNDOT_ANCHORS);
+    console.log(`[CCTV] Loaded MnDOT camera sources: ${cameras.length} geocoded (using nearest ${prioritized.length})`);
+    return prioritized;
+  } catch (error) {
+    console.warn('[CCTV] MnDOT source download error:', error?.message || error);
+    return [];
+  }
+}
+
+/**
  * Normalize a raw CCTV source item into a canonical shape with safe defaults.
  *
  * @param {object} item - Raw source from file, env, or Austin Open Data.
@@ -4104,9 +4312,9 @@ function normalizeSourceItem(item) {
 /**
  * Assemble and cache the merged CCTV source list.
  *
- * Merges sources from three origins (Austin Open Data, local file,
- * env variable), deduplicates by ID, applies the global max cap, and
- * caches for CCTV_SOURCE_CACHE_MS.
+ * Merges sources from live open-data packs (Austin, Caltrans, TfL, MnDOT),
+ * a local file, and an env variable, deduplicates by ID, applies the global
+ * max cap, and caches for CCTV_SOURCE_CACHE_MS.
  *
  * @returns {Promise<Array<object>>} Deduplicated, capped source list.
  */
@@ -4136,27 +4344,31 @@ async function refreshCctvSources() {
 
   const forceAustin = String(process.env.CCTV_FORCE_AUSTIN || '').trim() === '1';
   const preferAustin = String(process.env.CCTV_PREFER_AUSTIN || '1').trim() !== '0';
-  // Live open-data packs (Austin + Caltrans + TfL) load unless a file/env pack
-  // is configured and live packs aren't forced — same gate that governed the
-  // Austin-only fetch, now governing all three. Each pack fails independently.
+  // Live open-data packs (Austin + Caltrans + TfL + MnDOT) load unless a file/env
+  // pack is configured and live packs aren't forced — same gate that governed
+  // the Austin-only fetch, now governing all four. Each pack fails independently.
   const needsLiveSources = forceAustin || ((fromFile.length + fromEnv.length) === 0 && preferAustin);
   const tflEnabled = String(process.env.CCTV_TFL_ENABLED || '1').trim() !== '0';
+  const mndotEnabled = String(process.env.CCTV_MNDOT_ENABLED || '1').trim() !== '0';
 
   let fromAustin = [];
   let fromCaltrans = [];
   let fromTfl = [];
+  let fromMnDot = [];
   if (needsLiveSources) {
-    const [austinResult, caltransResult, tflResult] = await Promise.allSettled([
+    const [austinResult, caltransResult, tflResult, mndotResult] = await Promise.allSettled([
       loadAustinSourcesFromOpenData(),
       loadCaltransSourcesFromOpenData(),
       tflEnabled ? loadTflSourcesFromOpenData() : Promise.resolve([]),
+      mndotEnabled ? loadMnDotSourcesFromOpenData() : Promise.resolve([]),
     ]);
     fromAustin = austinResult.status === 'fulfilled' ? austinResult.value : [];
     fromCaltrans = caltransResult.status === 'fulfilled' ? caltransResult.value : [];
     fromTfl = tflResult.status === 'fulfilled' ? tflResult.value : [];
+    fromMnDot = mndotResult.status === 'fulfilled' ? mndotResult.value : [];
   }
   // Live sources first so file/env overrides win on duplicate IDs (Map last-write).
-  const merged = [...fromAustin, ...fromCaltrans, ...fromTfl, ...fromFile, ...fromEnv];
+  const merged = [...fromAustin, ...fromCaltrans, ...fromTfl, ...fromMnDot, ...fromFile, ...fromEnv];
 
   // Deduplicate by camera ID (last-write wins because of Map.set)
   const byId = new Map();
@@ -7330,6 +7542,484 @@ function normalizeAisTimestamp(value) {
  * plugins, configures the dev server host/port, and exposes selected
  * API keys to the client as import.meta.env defines.
  */
+/**
+ * News middleware factory — reads the locally ingested SQLite database.
+ *
+ * Unlike every other proxy in this file there is no upstream and no secret:
+ * `scripts/news-ingest.mjs` writes the database from GDELT, and this only
+ * reads it. What it protects is not a key but the process — an untrusted query
+ * string must never reach SQLite as anything but a bound value, and a missing
+ * database must be a legible 503 rather than a stack trace carrying a
+ * filesystem path.
+ *
+ * The handle is long-lived and reopened when the file's mtime moves, so the
+ * scheduled ingest lands underneath a running dev server. SQLite reads are
+ * microseconds, so there is deliberately no response cache — which also means
+ * there is no stale-day bug to reason about.
+ *
+ *   GET /api/news?country=IN&day=2026-08-26&limit=200&minImpact=1
+ *   GET /api/news/calendar?country=IN&from=2026-06-01&to=2026-08-27
+ *
+ * Exported for `src/data/newsProxy.test.mjs`, matching the radio/cctv pattern.
+ * @param {object} [options] Test seams.
+ * @param {string|null} [options.dbPath] Explicit database path, bypassing env.
+ * @param {Record<string,string>} [options.env] Vite's loaded environment.
+ * @returns {{handleNews: Function, handleCalendar: Function, close: Function}} Handlers.
+ */
+export function createNewsProxyMiddleware({ dbPath: dbPathOverride = null, env = {} } = {}) {
+  const DEFAULT_LIMIT = 200;
+  const MAX_LIMIT = 500;
+  const MAX_CALENDAR_DAYS = 400;
+  const COUNTRY_RE = /^[A-Z]{2}$/;
+  const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  let db = null;
+  let openPath = '';
+  let openMtime = 0;
+
+  const resolveDbPath = () => path.resolve(
+    dbPathOverride
+    || env.NEWS_DB_PATH
+    || process.env.NEWS_DB_PATH
+    || path.join(process.cwd(), '.gev-cache', 'news.sqlite'),
+  );
+
+  function closeDb() {
+    try { db?.close(); } catch { /* already closed */ }
+    db = null;
+    openPath = '';
+    openMtime = 0;
+  }
+
+  /** Open read-only, reopening when the ingester has replaced the file. */
+  function openDb() {
+    const target = resolveDbPath();
+    let stat;
+    try {
+      stat = fs.statSync(target);
+    } catch {
+      closeDb();
+      return null;
+    }
+    if (db && openPath === target && openMtime === stat.mtimeMs) return db;
+    closeDb();
+    try {
+      db = new DatabaseSync(target, { readOnly: true });
+      openPath = target;
+      openMtime = stat.mtimeMs;
+      return db;
+    } catch (error) {
+      console.warn('[news-proxy] could not open the news database:', error?.message || error);
+      closeDb();
+      return null;
+    }
+  }
+
+  /** Validate an ISO 3166-1 alpha-2 code. Rejects; never coerces. */
+  function readCountry(params) {
+    const value = String(params.get('country') || '').trim().toUpperCase();
+    return COUNTRY_RE.test(value) ? value : null;
+  }
+
+  /** Validate a YYYY-MM-DD day, rejecting calendar-impossible dates. */
+  function readDay(params, key) {
+    const value = String(params.get(key) || '').trim();
+    if (!DAY_RE.test(value)) return null;
+    const ms = Date.parse(`${value}T00:00:00.000Z`);
+    if (!Number.isFinite(ms)) return null;
+    return new Date(ms).toISOString().slice(0, 10) === value ? value : null;
+  }
+
+  const send = (res, status, payload) => {
+    res.statusCode = status;
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    res.setHeader('cache-control', 'no-store');
+    res.end(JSON.stringify(payload));
+  };
+
+  function handleCalendar(req, res) {
+    if (req.method !== 'GET') { send(res, 405, { error: 'Method Not Allowed' }); return; }
+    const params = new URL(req.url || '', 'http://localhost').searchParams;
+    const country = readCountry(params);
+    if (!country) { send(res, 400, { error: 'country must be an ISO 3166-1 alpha-2 code' }); return; }
+    if ((params.get('from') && !readDay(params, 'from')) || (params.get('to') && !readDay(params, 'to'))) {
+      send(res, 400, { error: 'from/to must be a valid YYYY-MM-DD date' });
+      return;
+    }
+    const handle = openDb();
+    if (!handle) { send(res, 503, { error: 'News database unavailable' }); return; }
+
+    const from = readDay(params, 'from');
+    const to = readDay(params, 'to');
+    try {
+      const clauses = ['country = ?'];
+      const binds = [country];
+      if (from) { clauses.push('day >= ?'); binds.push(from); }
+      if (to) { clauses.push('day <= ?'); binds.push(to); }
+      const rows = handle.prepare(
+        `SELECT day, COUNT(*) AS count, MAX(impact) AS maxImpact
+           FROM news WHERE ${clauses.join(' AND ')}
+          GROUP BY day ORDER BY day DESC LIMIT ${MAX_CALENDAR_DAYS}`,
+      ).all(...binds);
+      rows.reverse();
+      send(res, 200, { country, days: rows, truncated: rows.length >= MAX_CALENDAR_DAYS });
+    } catch (error) {
+      console.warn('[news-proxy] calendar query failed:', error?.message || error);
+      send(res, 500, { error: 'News calendar query failed' });
+    }
+  }
+
+  function handleNews(req, res, next) {
+    // Connect matches by prefix and the calendar route is registered first, so
+    // only bare /api/news arrives here. Anything nested is someone else's.
+    const pathname = new URL(req.url || '', 'http://localhost').pathname;
+    if (pathname !== '/' && pathname !== '') {
+      if (typeof next === 'function') next();
+      else send(res, 404, { error: 'Not Found' });
+      return;
+    }
+    if (req.method !== 'GET') { send(res, 405, { error: 'Method Not Allowed' }); return; }
+
+    const params = new URL(req.url || '', 'http://localhost').searchParams;
+    const country = readCountry(params);
+    if (!country) { send(res, 400, { error: 'country must be an ISO 3166-1 alpha-2 code' }); return; }
+    const day = readDay(params, 'day');
+    if (!day) { send(res, 400, { error: 'day must be a valid YYYY-MM-DD date' }); return; }
+
+    const requestedLimit = Number.parseInt(String(params.get('limit') ?? ''), 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(MAX_LIMIT, Math.max(1, requestedLimit))
+      : DEFAULT_LIMIT;
+    const requestedFloor = Number.parseInt(String(params.get('minImpact') ?? ''), 10);
+    const minImpact = Number.isFinite(requestedFloor) ? Math.min(5, Math.max(1, requestedFloor)) : 1;
+
+    const handle = openDb();
+    if (!handle) { send(res, 503, { error: 'News database unavailable' }); return; }
+
+    try {
+      const total = handle.prepare(
+        'SELECT COUNT(*) AS c FROM news WHERE country = ? AND day = ? AND impact >= ?',
+      ).get(country, day, minImpact).c;
+
+      // Deterministic ordering: loudest first, id as the tie-break, so the same
+      // request always returns the same rows in the same order — which is what
+      // makes a share link show the sender's map rather than a similar one.
+      const items = handle.prepare(
+        `SELECT id, title, source, url, impact, published_at AS publishedAt,
+                distinct_domains AS distinctDomains, lat, lon
+           FROM news
+          WHERE country = ? AND day = ? AND impact >= ?
+          ORDER BY impact DESC, distinct_domains DESC, id ASC
+          LIMIT ?`,
+      ).all(country, day, minImpact, limit);
+
+      send(res, 200, {
+        country, day, minImpact, count: items.length, total, truncated: total > items.length, items,
+      });
+    } catch (error) {
+      console.warn('[news-proxy] query failed:', error?.message || error);
+      send(res, 500, { error: 'News query failed' });
+    }
+  }
+
+  return { handleNews, handleCalendar, close: closeDb };
+}
+
+const WIKI_PULSE_STREAM_URL = 'https://stream.wikimedia.org/v2/stream/recentchange';
+/** Reconnect delays after a dropped stream, capped at the last entry. */
+const WIKI_PULSE_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000];
+/** Oldest-evicted ring buffer of relayed events. */
+const WIKI_PULSE_BUFFER_MAX = 300;
+/** Idempotent background reconnect check — recovery must not depend on browser traffic. */
+const WIKI_PULSE_TICK_MS = 5000;
+
+/**
+ * Keyless server-side relay for Wikimedia's public `recentchange` SSE feed.
+ *
+ * Node has no built-in EventSource, so this reads the stream's raw bytes off
+ * `fetch`'s `ReadableStream` body and parses `\n\n`-delimited SSE frames by
+ * hand — no new dependency for what is, structurally, "split on blank lines
+ * and JSON.parse the data: lines".
+ *
+ * Deliberately simpler than the AIS adapter (`aisStreamAdapter.js`): no API
+ * key, no auth-failure states, no per-subscription watchdog policy — just
+ * idle/connecting/live/degraded and a capped backoff, because a public feed
+ * with no quota and no credential to expire does not need that machinery.
+ *
+ * The server keeps no geometry — see `wikiPulsePlacement.js` for why a
+ * recentchange event cannot honestly be placed on a map at all, let alone
+ * server-side. This relay's only editorial decisions are (1) which events are
+ * even Wikipedia article edits, and (2) redacting anonymous editors' IP
+ * addresses before they ever leave the server.
+ * @param {object} [options]
+ * @param {string} [options.streamUrl] Override for tests.
+ * @param {typeof fetch} [options.fetchImpl] Override for tests.
+ * @param {() => number} [options.now] Override for tests.
+ * @returns {{handleWikiPulse: Function, ensureConnection: Function, connectOnce: Function, startTick: Function, dispose: Function, getStatus: Function}}
+ */
+export function createWikiPulseProxyMiddleware({
+  streamUrl = WIKI_PULSE_STREAM_URL,
+  fetchImpl = null,
+  now = Date.now,
+} = {}) {
+  const doFetch = fetchImpl || globalThis.fetch;
+
+  let _status = 'idle';
+  let _error = null;
+  let _lastEventAt = null;
+  let _reconnectAttempt = 0;
+  let _connecting = false;
+  let _activePromise = null;
+  let _reconnectTimer = null;
+  let _tickTimer = null;
+  let _generation = 0;
+  let _controller = null;
+  /** @type {Array<object>} Oldest first, capped at {@link WIKI_PULSE_BUFFER_MAX}. */
+  let _buffer = [];
+
+  function pushRow(row) {
+    _buffer.push(row);
+    if (_buffer.length > WIKI_PULSE_BUFFER_MAX) _buffer.shift();
+  }
+
+  /**
+   * Keep only Wikipedia article edits, redact the editor before it ever
+   * leaves the server, and use Wikimedia's own event id rather than
+   * inventing one.
+   * @param {object} event Parsed `data:` payload.
+   * @returns {object|null} Relayed row, or null when filtered out.
+   */
+  function normalizeEvent(event) {
+    if (!event || typeof event !== 'object') return null;
+    if (event.type !== 'edit' && event.type !== 'new') return null;
+    const serverName = String(event.server_name || '');
+    if (!/\.wikipedia\.org$/.test(serverName)) return null;
+    const id = event.meta?.id;
+    if (!id) return null;
+
+    const lengthNew = Number(event.length?.new);
+    const lengthOld = Number(event.length?.old);
+    const byteDelta = Number.isFinite(lengthNew) && Number.isFinite(lengthOld)
+      ? lengthNew - lengthOld
+      : null;
+    const title = String(event.title || '').trim() || null;
+    const url = event.meta?.uri
+      || (title ? `https://${serverName}/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}` : null);
+    const timestampSec = Number(event.timestamp);
+
+    return {
+      id: String(id),
+      wiki: serverName,
+      title,
+      url,
+      // Redacted here, at the only point the raw value ever exists server-side.
+      user: redactWikiPulseUser(event.user),
+      bot: Boolean(event.bot),
+      type: event.type,
+      comment: typeof event.comment === 'string' ? event.comment.slice(0, 280) : null,
+      byteDelta,
+      timestampMs: Number.isFinite(timestampSec) ? timestampSec * 1000 : now(),
+    };
+  }
+
+  /** Parse complete `\n\n`-terminated SSE frames out of a growing buffer. */
+  function consumeFrames(buffered, generation) {
+    let text = buffered;
+    let index = text.indexOf('\n\n');
+    while (index !== -1) {
+      if (generation !== _generation) return text;
+      const frame = text.slice(0, index);
+      text = text.slice(index + 2);
+      for (const line of frame.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        const jsonText = line.slice(5).trim();
+        if (!jsonText) continue;
+        let event;
+        try { event = JSON.parse(jsonText); } catch { continue; }
+        const row = normalizeEvent(event);
+        if (row) { pushRow(row); _lastEventAt = now(); }
+      }
+      index = text.indexOf('\n\n');
+    }
+    return text;
+  }
+
+  function scheduleReconnect(generation) {
+    const delay = WIKI_PULSE_BACKOFF_MS[Math.min(_reconnectAttempt, WIKI_PULSE_BACKOFF_MS.length - 1)];
+    _reconnectAttempt += 1;
+    _status = 'degraded';
+    clearTimeout(_reconnectTimer);
+    _reconnectTimer = setTimeout(() => {
+      if (generation !== _generation) return;
+      void connect(generation);
+    }, delay);
+    _reconnectTimer.unref?.();
+  }
+
+  async function connect(generation) {
+    if (_connecting) return;
+    _connecting = true;
+    _status = 'connecting';
+    _controller = new AbortController();
+    try {
+      const response = await doFetch(streamUrl, {
+        headers: { Accept: 'text/event-stream' },
+        signal: _controller.signal,
+      });
+      if (generation !== _generation) return;
+      if (!response?.ok || !response.body) {
+        throw new Error(`Wikimedia stream HTTP ${response?.status ?? 'error'}`);
+      }
+      _status = 'live';
+      _error = null;
+      _reconnectAttempt = 0;
+      _connecting = false;
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffered = '';
+      for (;;) {
+        if (generation !== _generation) {
+          try { await reader.cancel(); } catch { /* already gone */ }
+          return;
+        }
+        // eslint-disable-next-line no-await-in-loop
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffered += decoder.decode(value, { stream: true });
+        buffered = consumeFrames(buffered, generation);
+      }
+      if (generation !== _generation) return;
+      throw new Error('Wikimedia stream ended');
+    } catch (error) {
+      if (generation !== _generation) return;
+      _error = String(error?.message || error);
+      _connecting = false;
+      scheduleReconnect(generation);
+    }
+  }
+
+  /** Idempotent lazy connect — safe to call on every request and on a tick. */
+  function ensureConnection() {
+    if (_status === 'live' || _status === 'connecting' || _reconnectTimer) return _activePromise;
+    _activePromise = connect(_generation).finally(() => { _activePromise = null; });
+    return _activePromise;
+  }
+
+  function statusSnapshot() {
+    return {
+      status: _status,
+      error: _error,
+      lastEventAt: _lastEventAt,
+      silentForMs: _lastEventAt ? now() - _lastEventAt : null,
+      reconnectAttempt: _reconnectAttempt,
+    };
+  }
+
+  function handleWikiPulse(req, res) {
+    if (req.method !== 'GET') {
+      res.statusCode = 405;
+      res.setHeader('content-type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+      return;
+    }
+    ensureConnection();
+    const params = new URL(req.url || '', 'http://localhost').searchParams;
+    const requestedLimit = Number.parseInt(String(params.get('limit') ?? ''), 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(WIKI_PULSE_BUFFER_MAX, Math.max(1, requestedLimit))
+      : WIKI_PULSE_BUFFER_MAX;
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    res.setHeader('cache-control', 'no-store');
+    res.end(JSON.stringify({
+      rows: _buffer.slice(-limit),
+      source: 'Wikimedia EventStreams',
+      ...statusSnapshot(),
+    }));
+  }
+
+  function startTick() {
+    if (_tickTimer) return;
+    _tickTimer = setInterval(() => {
+      try { ensureConnection(); } catch { /* ignore */ }
+    }, WIKI_PULSE_TICK_MS);
+    _tickTimer.unref?.();
+  }
+
+  /** Invalidate the current generation so any in-flight read loop stops, then reset. */
+  function dispose() {
+    _generation += 1;
+    clearTimeout(_reconnectTimer);
+    _reconnectTimer = null;
+    clearInterval(_tickTimer);
+    _tickTimer = null;
+    if (_controller) { try { _controller.abort(); } catch { /* already aborted */ } }
+    _controller = null;
+    _buffer = [];
+    _status = 'idle';
+    _error = null;
+    _reconnectAttempt = 0;
+    _lastEventAt = null;
+    _connecting = false;
+    _activePromise = null;
+  }
+
+  return {
+    handleWikiPulse,
+    ensureConnection,
+    connectOnce: () => connect(_generation),
+    startTick,
+    dispose,
+    getStatus: statusSnapshot,
+  };
+}
+
+/**
+ * Vite plugin wrapper around {@link createWikiPulseProxyMiddleware}.
+ * @returns {import('vite').Plugin} The plugin.
+ */
+function wikiPulseProxy() {
+  const api = createWikiPulseProxyMiddleware({});
+  const install = (middlewares) => { middlewares.use('/api/wikipulse', api.handleWikiPulse); };
+  return {
+    name: 'wiki-pulse-proxy',
+    configureServer(server) {
+      install(server.middlewares);
+      api.startTick();
+      server.httpServer?.on('close', api.dispose);
+    },
+    configurePreviewServer(server) {
+      install(server.middlewares);
+      api.startTick();
+      server.httpServer?.on('close', api.dispose);
+    },
+    // Middleware-mode backstop: there is no httpServer to hang 'close' on.
+    closeBundle() { api.dispose(); },
+  };
+}
+
+/**
+ * Vite plugin wrapper around {@link createNewsProxyMiddleware}.
+ * @param {Record<string,string>} env Vite's loaded environment.
+ * @returns {import('vite').Plugin} The plugin.
+ */
+function newsProxy(env) {
+  const api = createNewsProxyMiddleware({ env });
+  const install = (middlewares) => {
+    // Calendar first: Connect matches by prefix, and /api/news would otherwise
+    // swallow /api/news/calendar.
+    middlewares.use('/api/news/calendar', api.handleCalendar);
+    middlewares.use('/api/news', api.handleNews);
+  };
+  return {
+    name: 'news-proxy',
+    configureServer(server) { install(server.middlewares); },
+    configurePreviewServer(server) { install(server.middlewares); },
+    closeBundle() { api.close(); },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Load only this checkout's dotenv files. Shell/Keychain values still win,
   // and no sibling workspace is consulted implicitly.
@@ -7360,14 +8050,18 @@ export default defineConfig(({ mode }) => {
       trackBackfillProxies(),
       openAiRealtimeProxy(),
       googlePlacesContextProxy(),
+      newsProxy(env),
+      wikiPulseProxy(),
     ],
     server: {
       host: env.HOST || 'localhost',
       port: parseInt(env.PORT, 10) || 5173,
-      // When binding to all interfaces, allow any host; otherwise restrict to local names
+      // When binding to all interfaces, allow any host; otherwise restrict to local
+      // names plus Cloudflare quick tunnels (`cloudflared tunnel --url`), whose
+      // *.trycloudflare.com subdomain is regenerated on every restart.
       allowedHosts: (env.HOST === '0.0.0.0' || env.HOST === '::')
         ? true
-        : ['localhost', '127.0.0.1', '.local'],
+        : ['localhost', '127.0.0.1', '.local', '.trycloudflare.com'],
     },
     // Expose selected API keys to the browser via import.meta.env.*
     define: {

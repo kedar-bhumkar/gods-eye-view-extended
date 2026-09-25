@@ -34,3 +34,24 @@ See DATA_SOURCES.md.
 
 Duplicate names exist upstream (two "Cordillera Oriental", a sliver + real
 "Canadian Shield", …); the lookup module resolves ties by largest area.
+
+## countries.json
+
+ISO 3166-1 alpha-2 country boundaries, built by `scripts/build-country-polygons.mjs`
+from Natural Earth 1:10m `ne_10m_admin_0_countries` (public domain).
+233 countries, 2,945 outer rings, 2.95 MB. Loaded lazily by the News layer, which
+uses it twice: to decide which country the camera is over, and to scatter that
+country's pins inside its own border.
+
+10m rather than 50m, measured rather than assumed. Against 14 real city
+coordinates, 50m placed only 7 inside their own country — New York, Miami,
+Kochi, Hong Kong and San Francisco all fell in the sea, because at 1:50,000,000
+the coastline is generalised past those harbours. 10m gets 12 of 14 for 2.95 MB
+instead of 1.16 MB. Miami and Venice still miss; `newsPlacement.countryAt()`
+covers that with a nearest-country fallback, which has to exist anyway for a
+camera parked offshore.
+
+Curation: outer rings only (holes discarded), Douglas-Peucker at 0.01 degrees,
+coordinates to 3 decimals, parts under 20 km2 dropped, sorted by ISO code for a
+stable diff. Rings carry precomputed areas so pin scatter can be weighted by
+landmass rather than by ring order.

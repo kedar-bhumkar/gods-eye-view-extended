@@ -104,9 +104,23 @@ export const DATA_CREDITS = [
   {
     key: 'gdelt',
     html:
-      'Cockpit regional headlines: ' +
+      'Cockpit regional headlines &amp; the News layer: ' +
       '<a href="https://www.gdeltproject.org/about.html" target="_blank" rel="noopener">GDELT Project</a> ' +
-      '(location-matched article links; publisher terms apply)',
+      '(location-matched article links; publisher terms apply). GDELT asks that ' +
+      'any use or redistribution cite the project and link to its site.',
+  },
+  {
+    key: 'wikimedia-eventstreams',
+    html:
+      'Wiki Pulse layer: ' +
+      '<a href="https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams" target="_blank" rel="noopener">Wikimedia EventStreams</a> ' +
+      "(CC0 recentchange metadata; pin positions are illustrative, not the edit's real location).",
+  },
+  {
+    key: 'indian-history',
+    html:
+      'Indian History layer: hand-traced approximate kingdom extents (original work); ' +
+      'article links to <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a>.',
   },
   {
     key: 'austin-cctv',
@@ -126,6 +140,13 @@ export const DATA_CREDITS = [
       'CCTV cameras &amp; frames (London): ' +
       '<a href="https://tfl.gov.uk/info-for/open-data-users/" target="_blank" rel="noopener">Powered by TfL Open Data</a>. ' +
       'Contains OS data © Crown copyright and database rights.',
+  },
+  {
+    key: 'mndot-cctv',
+    html:
+      'CCTV cameras &amp; frames (Minnesota, Twin Cities metro): Minnesota Department of Transportation — ' +
+      '<a href="https://511mn.org" target="_blank" rel="noopener">511mn.org</a>, ' +
+      'images via the multi-state <a href="https://www.carsprogram.org/" target="_blank" rel="noopener">CARS Program</a>.',
   },
   {
     key: 'gbfs',
@@ -197,7 +218,7 @@ export const TOMTOM_CREDIT = {
 export const NATURAL_EARTH_CREDIT = {
   key: 'natural-earth',
   html:
-    'Physical region boundaries from ' +
+    'Physical region and country boundaries from ' +
     '<a href="https://www.naturalearthdata.com" target="_blank" rel="noopener">Natural Earth</a> (public domain)',
 };
 
