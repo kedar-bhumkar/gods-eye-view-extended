@@ -59,6 +59,8 @@ locally (below). The other layers work immediately.
 The repo's first deliberately **non-real-time** layer: one country's news for one *day*, as pins
 scattered inside that country's borders.
 
+![A day of India's news scattered as impact-coloured pins inside its borders, a story card, then stepping to the next day](docs/media/extended/news-india-day.gif)
+
 **Build the database first** — one HTTP call per country-day against GDELT, no API key:
 
 ```bash
@@ -97,6 +99,8 @@ keyless `recentchange` SSE feed through `/api/wikipulse` (Node's native `fetch`,
 Filtered to `*.wikipedia.org` edit/new events, buffered to a capped 300 rows in memory, polled by the
 client every 3 s.
 
+![Live Wikipedia edits blinking onto the globe, then one edit's card with its illustrative-position note](docs/media/extended/wiki-pulse-globe.gif)
+
 Deliberately **not analytical**, and the in-app card says so: a blip's globe position is
 illustrative — deterministic per event id, but chosen by land-area-weighted random country pick, not
 derived from the edit's language, wiki, or the editor's location. The layer answers *"is the world
@@ -115,6 +119,12 @@ blips accumulate and expire on their own TTL, so the effect reads as a pulse, no
 (1947), grouped into five eras: **Ancient**, **Classical**, **Early medieval**, **Late medieval**, and
 **Early modern**. Each has an approximate territorial extent, key cities, and dated key events, each
 linked to its English Wikipedia article.
+
+![The Maurya Empire with its cities and numbered events, the Kalinga War card opened and closed, then flying through the Gupta, Chola and Mughal eras](docs/media/extended/indian-history-eras.gif)
+
+Pick an era chip, then a ruler: the camera flies to that ruler's approximate extent. Clicking an event,
+city, or territory opens a card; clicking the card opens the Wikipedia article, and its **✕** (or a
+click on empty ground) closes it.
 
 The dataset lives in [`src/data/local_data/indian_history/`](src/data/local_data/indian_history/) and
 is **original work, hand-traced for this project** — MIT licensed like the code, linking to Wikipedia
@@ -183,7 +193,8 @@ Each new module ships unit tests alongside it (`*.test.mjs`); run everything wit
   TeleGeography. Datacenter/dam extracts are ODbL 1.0 (attribution + share-alike).
 - **3D models** under `public/models/` keep their individual licenses — see that folder's README.
 - **Capture GIFs** in `docs/media/` were created and are owned by Bilawal Sidhu and are not
-  MIT-licensed standalone assets — see [media provenance](docs/media/README.md).
+  MIT-licensed standalone assets — see [media provenance](docs/media/README.md). This fork's own
+  captures of its added layers live separately in `docs/media/extended/` (see the same file).
 - **Live feeds** are fetched under each provider's terms; some restrict commercial use and require
   your own credentials.
 

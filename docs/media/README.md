@@ -26,6 +26,16 @@ Copyright © Bilawal Sidhu. These files are not covered by the project's MIT Lic
 
 The GIFs are promotional captures of God's Eye View. They include Google Photorealistic 3D Tiles and public or third-party data layers with in-frame attribution. Bilawal Sidhu's ownership and permission cover the captures and his likeness; they do not replace the terms of Google Maps Platform or any displayed data provider. Keep the visible attribution intact.
 
+## This fork's captures (`extended/`)
+
+The GIFs in `extended/` were recorded for this fork from the app running locally, to document the layers the fork adds:
+
+- `extended/indian-history-eras.gif` — Indian History layer
+- `extended/news-india-day.gif` — News layer
+- `extended/wiki-pulse-globe.gif` — Wiki Pulse layer
+
+They are separate from Bilawal Sidhu's captures above, and his ownership statement does not extend to them. Like his, they show Google Photorealistic 3D Tiles / Google Maps imagery and Cesium with the in-frame attribution kept visible, so the Google Maps Platform terms still apply to that imagery. The News capture shows headlines from the GDELT Project (publisher terms apply), and the Wiki Pulse capture shows live Wikimedia EventStreams metadata (CC0) with unregistered editors' IP addresses redacted. The Indian History capture shows this fork's own dataset (MIT).
+
 ## Public README PNGs
 
 Bilawal Sidhu published the following PNGs in the existing public `bilawalsidhu/gods-eye-view` repository and authorized their continued inclusion and redistribution with this repository and its project documentation:
