@@ -26,11 +26,11 @@
 
 ## What this fork adds
 
-| | Addition | Data source | Keyless? | Toggle |
+| | Addition | Data source | Keyless? | Share-link code |
 |---|---|---|---|---|
-| 📰 | **News layer** — a day of a country's news, pinned inside its own borders | GDELT DOC 2.0, ingested locally to SQLite | ✅ | `n` |
-| 🌊 | **Wiki Pulse layer** — ambient live Wikipedia edit activity worldwide | Wikimedia EventStreams `recentchange` | ✅ | `p` |
-| 🏛️ | **Indian History layer** — 49 powers from the Nandas to the British Raj | Bundled local dataset (original) | ✅ | `h` |
+| 📰 | **News layer** — a day of a country's news, pinned inside its own borders | GDELT DOC 2.0, ingested locally to SQLite | ✅ | `zn` |
+| 🌊 | **Wiki Pulse layer** — ambient live Wikipedia edit activity worldwide | Wikimedia EventStreams `recentchange` | ✅ | `zp` |
+| 🏛️ | **Indian History layer** — 49 powers from the Nandas to the British Raj | Bundled local dataset (original) | ✅ | `zh` |
 | 🗺️ | **Natural Earth country polygons** — supporting data for News placement | Natural Earth 1:10m (public domain) | ✅ | — |
 | ☁️ | **Cloudflare quick-tunnel support** — share the dev server over a public URL | — | ✅ | — |
 
@@ -133,7 +133,7 @@ provenance and the era/kingdom breakdown.
 
 ## 🗺️ Natural Earth country polygons
 
-`src/data/local_data/natural_earth/countries.json` — 233 countries, 2,945 outer rings, 2.95 MB, built
+`src/data/local_data/natural_earth/countries-iso.json` — 233 countries, 2,945 outer rings, 2.95 MB, built
 by `scripts/build-country-polygons.mjs` from Natural Earth 1:10m `ne_10m_admin_0_countries` (public
 domain). Loaded lazily by the News layer, which uses it to decide which country the camera is over and
 to scatter that country's pins inside its own border.
@@ -169,7 +169,7 @@ DNS-rebinding protection are both preserved: hosts outside the allowlist are sti
 
 ```
 scripts/news-ingest.mjs              GDELT -> SQLite ingester (idempotent, no API key)
-scripts/build-country-polygons.mjs   Natural Earth -> countries.json
+scripts/build-country-polygons.mjs   Natural Earth -> countries-iso.json
 src/data/news*.js                    News layer, policy, placement, presentation
 src/data/wikiPulse*.js               Wiki Pulse layer, placement, presentation
 src/data/indianHistory*.js           Indian History layer + presentation

@@ -51,7 +51,7 @@ import { countryAt, placeArticles } from './newsPlacement.js';
 
 const API_URL = '/api/news';
 const CALENDAR_URL = '/api/news/calendar';
-const COUNTRIES_URL = new URL('./local_data/natural_earth/countries.json', import.meta.url).href;
+const COUNTRIES_URL = new URL('./local_data/natural_earth/countries-iso.json', import.meta.url).href;
 
 /** Refresh cadence for the current day. News is not live; fifteen minutes is plenty. */
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;

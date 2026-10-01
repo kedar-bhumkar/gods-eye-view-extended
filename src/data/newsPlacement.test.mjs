@@ -160,10 +160,10 @@ test('placeArticles reports how every position was arrived at', () => {
 test('real country polygons place real cities and scatter inside real borders', async (t) => {
   let countries;
   try {
-    const url = new URL('./local_data/natural_earth/countries.json', import.meta.url);
+    const url = new URL('./local_data/natural_earth/countries-iso.json', import.meta.url);
     countries = JSON.parse(await readFile(url, 'utf8')).countries;
   } catch {
-    t.skip('countries.json not built — run scripts/build-country-polygons.mjs');
+    t.skip('countries-iso.json not built — run scripts/build-country-polygons.mjs');
     return;
   }
 
@@ -183,7 +183,7 @@ test('real country polygons place real cities and scatter inside real borders', 
   const articles = Array.from({ length: 120 }, (_, i) => ({ id: `xx-2026-08-24-${i}` }));
   for (const iso of ['IN', 'US', 'CL', 'NO', 'ID', 'JP', 'GB']) {
     const country = countries.find((entry) => entry.iso === iso);
-    assert.ok(country, `${iso} missing from countries.json`);
+    assert.ok(country, `${iso} missing from countries-iso.json`);
     const { placed, counts } = placeArticles(articles, country);
     assert.equal(placed.length, articles.length, `${iso} dropped articles`);
     assert.equal(counts.centroid, 0, `${iso} fell back to centroids`);

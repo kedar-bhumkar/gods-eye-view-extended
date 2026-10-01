@@ -213,9 +213,9 @@ test('share-link kingdom option agrees with the layer and round-trips', () => {
     options: { 'indian-history': { kingdom: 'gupta' } },
   });
   const params = encodeLayerStateParams(new URLSearchParams([['v', '2']]), state);
-  assert.equal(params.get('l'), 'h');
+  assert.equal(params.get('l'), 'zh');
   // Other owners may emit explicit defaults (flights' models3d); only ours matters here.
-  assert.ok(params.get('lo').split('_').includes('h.k.g'));
+  assert.ok(params.get('lo').split('_').includes('zh.k.g'));
   assert.deepEqual(decodeLayerStateParams(params), state);
 
   for (const id of KINGDOM_IDS) {
@@ -226,7 +226,7 @@ test('share-link kingdom option agrees with the layer and round-trips', () => {
     assert.equal(roundTrip.options['indian-history'].kingdom, id);
   }
   // Omitted option falls back to the default kingdom.
-  const bare = decodeLayerStateParams(new URLSearchParams('v=2&l=h'));
+  const bare = decodeLayerStateParams(new URLSearchParams('v=2&l=zh'));
   assert.equal(bare.options['indian-history'].kingdom, DEFAULT_KINGDOM);
 });
 

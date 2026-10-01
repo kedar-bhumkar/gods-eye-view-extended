@@ -44,7 +44,7 @@ export {
  */
 
 const API_URL = '/api/wikipulse';
-const COUNTRIES_URL = new URL('./local_data/natural_earth/countries.json', import.meta.url).href;
+const COUNTRIES_URL = new URL('./local_data/natural_earth/countries-iso.json', import.meta.url).href;
 
 /** How long a blip stays on the globe before it expires. */
 const PIN_TTL_MS = 90_000;

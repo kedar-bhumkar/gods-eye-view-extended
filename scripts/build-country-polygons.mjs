@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build src/data/local_data/natural_earth/countries.json from Natural Earth's
+ * Build src/data/local_data/natural_earth/countries-iso.json from Natural Earth's
  * public-domain 1:10m admin-0 country boundaries.
  *
  * Why this file has to exist: the repo already bundles Natural Earth *physical*
@@ -52,7 +52,7 @@ import { fileURLToPath } from 'node:url';
 const SOURCE_REPO = 'https://github.com/nvkelso/natural-earth-vector';
 const SOURCE_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_countries.geojson';
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)),
-  '..', 'src', 'data', 'local_data', 'natural_earth', 'countries.json');
+  '..', 'src', 'data', 'local_data', 'natural_earth', 'countries-iso.json');
 const TOLERANCE = 0.01; // degrees, ~1.1 km
 const DECIMALS = 3;
 const MIN_PART_KM2 = 20;

@@ -57,10 +57,10 @@ test('placeEvent refuses what it cannot place', () => {
 test('real country polygons: every placed blip lands inside some real country', async (t) => {
   let countries;
   try {
-    const url = new URL('./local_data/natural_earth/countries.json', import.meta.url);
+    const url = new URL('./local_data/natural_earth/countries-iso.json', import.meta.url);
     countries = JSON.parse(await readFile(url, 'utf8')).countries;
   } catch {
-    t.skip('countries.json not built — run scripts/build-country-polygons.mjs');
+    t.skip('countries-iso.json not built — run scripts/build-country-polygons.mjs');
     return;
   }
 
