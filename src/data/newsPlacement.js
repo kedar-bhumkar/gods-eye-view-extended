@@ -70,7 +70,10 @@ export function pointInRing(ring, lat, lon) {
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];
     const [xj, yj] = ring[j];
-    if (((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi)) {
+    if (
+      yi > lat !== yj > lat &&
+      lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
+    ) {
       inside = !inside;
     }
   }
@@ -88,7 +91,7 @@ export function pointInCountry(country, lat, lon) {
 /** Great-circle-ish distance in km. Equirectangular — accurate enough well under 1000 km. */
 function approxKm(latA, lonA, latB, lonB) {
   const meanLat = ((latA + latB) / 2) * (Math.PI / 180);
-  const dx = (lonB - lonA) * 111.320 * Math.cos(meanLat);
+  const dx = (lonB - lonA) * 111.32 * Math.cos(meanLat);
   const dy = (latB - latA) * KM_PER_DEG_LAT;
   return Math.hypot(dx, dy);
 }
@@ -111,7 +114,7 @@ function approxKm(latA, lonA, latB, lonB) {
  */
 function distanceToRingKm(ring, lat, lon) {
   if (!Array.isArray(ring) || ring.length < 2) return Infinity;
-  const kmPerDegLon = 111.320 * Math.cos((lat * Math.PI) / 180);
+  const kmPerDegLon = 111.32 * Math.cos((lat * Math.PI) / 180);
   const toLocal = ([pointLon, pointLat]) => [
     (pointLon - lon) * kmPerDegLon,
     (pointLat - lat) * KM_PER_DEG_LAT,
@@ -123,12 +126,15 @@ function distanceToRingKm(ring, lat, lon) {
     const current = toLocal(vertex);
     const dx = current[0] - previous[0];
     const dy = current[1] - previous[1];
-    const lengthSquared = (dx * dx) + (dy * dy);
+    const lengthSquared = dx * dx + dy * dy;
     let closestX = previous[0];
     let closestY = previous[1];
     if (lengthSquared > 0) {
       // Projection of the origin (the query point) onto this segment.
-      const t = Math.max(0, Math.min(1, -((previous[0] * dx) + (previous[1] * dy)) / lengthSquared));
+      const t = Math.max(
+        0,
+        Math.min(1, -(previous[0] * dx + previous[1] * dy) / lengthSquared),
+      );
       closestX = previous[0] + t * dx;
       closestY = previous[1] + t * dy;
     }
@@ -154,12 +160,27 @@ function distanceToRingKm(ring, lat, lon) {
  * @param {number} [options.maxKm] Fallback radius.
  * @returns {{iso: string, name: string, exact: boolean, distanceKm: number}|null} Match, or null.
  */
-export function countryAt(countries, lat, lon, { maxKm = NEAREST_COUNTRY_MAX_KM } = {}) {
-  if (!Array.isArray(countries) || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+export function countryAt(
+  countries,
+  lat,
+  lon,
+  { maxKm = NEAREST_COUNTRY_MAX_KM } = {},
+) {
+  if (
+    !Array.isArray(countries) ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon)
+  )
+    return null;
 
   for (const country of countries) {
     if (pointInCountry(country, lat, lon)) {
-      return { iso: country.iso, name: country.name, exact: true, distanceKm: 0 };
+      return {
+        iso: country.iso,
+        name: country.name,
+        exact: true,
+        distanceKm: 0,
+      };
     }
   }
 
@@ -168,13 +189,23 @@ export function countryAt(countries, lat, lon, { maxKm = NEAREST_COUNTRY_MAX_KM 
   for (const country of countries) {
     const [west, south, east, north] = country.bbox || [];
     // Cheap bbox reject before walking thousands of vertices.
-    if (!Number.isFinite(west)
-      || lon < west - padDeg || lon > east + padDeg
-      || lat < south - padDeg || lat > north + padDeg) continue;
+    if (
+      !Number.isFinite(west) ||
+      lon < west - padDeg ||
+      lon > east + padDeg ||
+      lat < south - padDeg ||
+      lat > north + padDeg
+    )
+      continue;
     for (const ring of country.rings) {
       const distance = distanceToRingKm(ring, lat, lon);
       if (distance <= maxKm && (!best || distance < best.distanceKm)) {
-        best = { iso: country.iso, name: country.name, exact: false, distanceKm: distance };
+        best = {
+          iso: country.iso,
+          name: country.name,
+          exact: false,
+          distanceKm: distance,
+        };
       }
     }
   }
@@ -194,9 +225,10 @@ export function countryAt(countries, lat, lon, { maxKm = NEAREST_COUNTRY_MAX_KM 
 export function pickRingByArea(country, random) {
   const rings = country?.rings;
   if (!Array.isArray(rings) || !rings.length) return null;
-  const areas = Array.isArray(country.areas) && country.areas.length === rings.length
-    ? country.areas.map((value) => Math.max(0, Number(value) || 0))
-    : rings.map(() => 1);
+  const areas =
+    Array.isArray(country.areas) && country.areas.length === rings.length
+      ? country.areas.map((value) => Math.max(0, Number(value) || 0))
+      : rings.map(() => 1);
   const total = areas.reduce((sum, value) => sum + value, 0);
   if (total <= 0) return { ring: rings[0], index: 0 };
 
@@ -221,7 +253,10 @@ export function pickRingByArea(country, random) {
 
 /** Axis-aligned bounds of a ring. */
 function ringBounds(ring) {
-  let west = Infinity; let south = Infinity; let east = -Infinity; let north = -Infinity;
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
   for (const [lon, lat] of ring) {
     if (lon < west) west = lon;
     if (lon > east) east = lon;
@@ -233,8 +268,12 @@ function ringBounds(ring) {
 
 /** Vertex-average of a ring — always inside for convex shapes, near-centre otherwise. */
 function ringCentroid(ring) {
-  let lonSum = 0; let latSum = 0;
-  for (const [lon, lat] of ring) { lonSum += lon; latSum += lat; }
+  let lonSum = 0;
+  let latSum = 0;
+  for (const [lon, lat] of ring) {
+    lonSum += lon;
+    latSum += lat;
+  }
   return { lat: latSum / ring.length, lon: lonSum / ring.length };
 }
 
@@ -256,10 +295,18 @@ function ringCentroid(ring) {
  * @param {number} [options.maxAttempts] Rejection-sampling budget.
  * @returns {{lat: number, lon: number, source: 'record'|'scatter'|'centroid'}|null} Position.
  */
-export function placeArticle(article, country, { maxAttempts = MAX_SAMPLE_ATTEMPTS } = {}) {
+export function placeArticle(
+  article,
+  country,
+  { maxAttempts = MAX_SAMPLE_ATTEMPTS } = {},
+) {
   const lat = Number(article?.lat);
   const lon = Number(article?.lon);
-  if (Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0)) {
+  if (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    (lat !== 0 || lon !== 0)
+  ) {
     return { lat, lon, source: 'record' };
   }
 
@@ -295,7 +342,10 @@ export function placeArticles(articles, country) {
   const placed = [];
   for (const article of Array.isArray(articles) ? articles : []) {
     const position = placeArticle(article, country);
-    if (!position) { counts.failed++; continue; }
+    if (!position) {
+      counts.failed++;
+      continue;
+    }
     counts[position.source]++;
     placed.push({ ...article, ...position });
   }

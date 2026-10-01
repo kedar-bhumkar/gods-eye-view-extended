@@ -38,7 +38,10 @@ export function pickCountryByArea(countries, random) {
 
   const totals = list.map((country) => {
     const areas = Array.isArray(country?.areas) ? country.areas : [];
-    return areas.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    return areas.reduce(
+      (sum, value) => sum + Math.max(0, Number(value) || 0),
+      0,
+    );
   });
   const total = totals.reduce((sum, value) => sum + value, 0);
   if (total <= 0) return list[0] || null;

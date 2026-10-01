@@ -29,7 +29,10 @@ import {
 
 // Re-exported so `src/data/news.js` stays the layer's single public entry point.
 export {
-  MAX_PINS, chooseImpactFloor, createNewsCardEntry, describeNewsState,
+  MAX_PINS,
+  chooseImpactFloor,
+  createNewsCardEntry,
+  describeNewsState,
 } from './newsPresentation.js';
 import { countryAt, placeArticles } from './newsPlacement.js';
 
@@ -51,7 +54,10 @@ import { countryAt, placeArticles } from './newsPlacement.js';
 
 const API_URL = '/api/news';
 const CALENDAR_URL = '/api/news/calendar';
-const COUNTRIES_URL = new URL('./local_data/natural_earth/countries-iso.json', import.meta.url).href;
+const COUNTRIES_URL = new URL(
+  './local_data/natural_earth/countries-iso.json',
+  import.meta.url,
+).href;
 
 /** Refresh cadence for the current day. News is not live; fifteen minutes is plenty. */
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -64,7 +70,10 @@ const COUNTRY_RECHECK_MOVE_DEG = 0.35;
  * @param {object} [deps] Injection seams.
  * @returns {object} A DataLayerManager-compatible layer module.
  */
-export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {}) {
+export function createNewsLayer({
+  fetchImpl = null,
+  loadCountries = null,
+} = {}) {
   const doFetch = (...args) => (fetchImpl || globalThis.fetch)(...args);
 
   let _viewer = null;
@@ -95,16 +104,29 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
   let _unavailable = false;
   let _loading = false;
 
-  const notifyRowControls = () => { try { _rowControlsListener?.(); } catch { /* ignore */ } };
+  const notifyRowControls = () => {
+    try {
+      _rowControlsListener?.();
+    } catch {
+      /* ignore */
+    }
+  };
 
   /** Lazily load the bundled country polygons — 2.9 MB, so never at boot. */
   async function countries() {
     if (_countries) return _countries;
     if (!_countriesPromise) {
-      _countriesPromise = (loadCountries
-        ? loadCountries()
-        : doFetch(COUNTRIES_URL).then((r) => r.json()).then((d) => d.countries))
-        .then((list) => { _countries = list; return list; })
+      _countriesPromise = (
+        loadCountries
+          ? loadCountries()
+          : doFetch(COUNTRIES_URL)
+              .then((r) => r.json())
+              .then((d) => d.countries)
+      )
+        .then((list) => {
+          _countries = list;
+          return list;
+        })
         .catch((error) => {
           _countriesPromise = null;
           console.warn('[news] country polygons failed to load:', error);
@@ -144,7 +166,9 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
 
   async function fetchCalendar(country) {
     try {
-      const response = await doFetch(`${CALENDAR_URL}?country=${encodeURIComponent(country)}`);
+      const response = await doFetch(
+        `${CALENDAR_URL}?country=${encodeURIComponent(country)}`,
+      );
       if (!response.ok) return [];
       const payload = await response.json();
       return Array.isArray(payload?.days) ? payload.days : [];
@@ -211,13 +235,18 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
         publishedAt: row.publishedAt,
         day: _day,
         // The pin is scattered, not located. Say so wherever it is shown.
-        placement: row.source === 'record' ? 'reported location' : 'scattered within country',
+        placement:
+          row.source === 'record'
+            ? 'reported location'
+            : 'scattered within country',
       });
       entity.description = [
         `<h3>${escapeHtml(row.title)}</h3>`,
         `<p><b>${band.label}</b> — carried by ${row.distinctDomains} outlet${row.distinctDomains === 1 ? '' : 's'}</p>`,
         `<p>${escapeHtml(row.source)} · ${escapeHtml(String(row.publishedAt).slice(0, 16).replace('T', ' '))} UTC</p>`,
-        row.url ? `<p><a href="${escapeHtml(row.url)}" target="_blank" rel="noopener">Read the article</a></p>` : '',
+        row.url
+          ? `<p><a href="${escapeHtml(row.url)}" target="_blank" rel="noopener">Read the article</a></p>`
+          : '',
         '<p><small>Pin position is scattered within the country, not the location of the event.</small></p>',
       ].join('');
     }
@@ -244,9 +273,17 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
   }
 
   function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    }[character]));
+    return String(value ?? '').replace(
+      /[&<>"']/g,
+      (character) =>
+        ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        })[character],
+    );
   }
 
   const layer = {
@@ -301,8 +338,14 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
       showCard(null);
       setOverlaySourceVisible(OVERLAY_SOURCE_ID, false);
       if (_dataSource) _dataSource.show = false;
-      if (_cameraMoveEnd) { _cameraMoveEnd(); _cameraMoveEnd = null; }
-      if (_clickHandler) { _clickHandler.destroy(); _clickHandler = null; }
+      if (_cameraMoveEnd) {
+        _cameraMoveEnd();
+        _cameraMoveEnd = null;
+      }
+      if (_clickHandler) {
+        _clickHandler.destroy();
+        _clickHandler = null;
+      }
       governorRequestRender('news:disable');
       return true;
     },
@@ -314,7 +357,10 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
         const country = await resolveCountry(viewer || _viewer);
         if (!country) {
           _dataSource?.entities.removeAll();
-          _count = 0; _hidden = 0; _tally = {}; _error = null;
+          _count = 0;
+          _hidden = 0;
+          _tally = {};
+          _error = null;
           return true;
         }
         const day = normalizeDayKey(_params.day) || _day;
@@ -331,9 +377,11 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
         render(visible, country);
 
         _tally = {};
-        for (const row of visible) _tally[row.impact] = (_tally[row.impact] || 0) + 1;
+        for (const row of visible)
+          _tally[row.impact] = (_tally[row.impact] || 0) + 1;
         _count = shown;
-        _hidden = hidden + Math.max(0, (payload?.total || rows.length) - rows.length);
+        _hidden =
+          hidden + Math.max(0, (payload?.total || rows.length) - rows.length);
         _lastUpdate = Date.now();
         _error = null;
         if (!_calendar.length) _calendar = await fetchCalendar(country);
@@ -356,7 +404,8 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
      */
     setParams(params = {}) {
       if (Object.hasOwn(params, 'country')) {
-        const value = params.country === null ? null : normalizeCountryCode(params.country);
+        const value =
+          params.country === null ? null : normalizeCountryCode(params.country);
         if (params.country !== null && !value) return false;
         _params = { ..._params, country: value };
         _resolvedCountry = value;
@@ -388,8 +437,19 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
       const next = addDays(_day, 1);
       return {
         chips: [
-          { id: 'prev', label: '◀', title: `Show ${previous}`, params: { day: previous } },
-          { id: 'day', label: _day, active: true, title: `Showing ${_day} (UTC)`, params: { day: _day } },
+          {
+            id: 'prev',
+            label: '◀',
+            title: `Show ${previous}`,
+            params: { day: previous },
+          },
+          {
+            id: 'day',
+            label: _day,
+            active: true,
+            title: `Showing ${_day} (UTC)`,
+            params: { day: _day },
+          },
           {
             id: 'next',
             label: '▶',
@@ -397,7 +457,13 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
             title: isToday ? 'Already at the latest day' : `Show ${next}`,
             params: { day: next },
           },
-          { id: 'today', label: 'TODAY', disabled: isToday, title: 'Jump to the latest day', params: { day: null } },
+          {
+            id: 'today',
+            label: 'TODAY',
+            disabled: isToday,
+            title: 'Jump to the latest day',
+            params: { day: null },
+          },
         ],
         legend: newsImpactLegend(_tally),
       };
@@ -415,7 +481,7 @@ export function createNewsLayer({ fetchImpl = null, loadCountries = null } = {})
         error: _error,
         // A missing database must read UNAVAILABLE, never a quiet zero — a
         // silent 0 says "no news today", which is a different claim.
-        status: _unavailable ? 'unavailable' : (_error ? 'degraded' : 'nominal'),
+        status: _unavailable ? 'unavailable' : _error ? 'degraded' : 'nominal',
         meta: describeNewsState({
           country: _resolvedCountry,
           day: _day,

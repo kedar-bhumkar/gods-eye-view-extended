@@ -1,5 +1,9 @@
 import reservationRows from './layerStateTokenReservations.json' with { type: 'json' };
-import { DEFAULT_KINGDOM, KINGDOM_CODES, KINGDOM_IDS } from './indianHistoryPresentation.js';
+import {
+  DEFAULT_KINGDOM,
+  KINGDOM_CODES,
+  KINGDOM_IDS,
+} from './indianHistoryPresentation.js';
 
 const VALID_DISPOSITIONS = new Set([
   'enabled-only',

@@ -22,7 +22,10 @@ import {
 
 // Re-exported so `src/data/wikiPulse.js` stays the layer's single public entry point.
 export {
-  classifyEdit, createWikiPulseCardEntry, describeWikiPulseState, redactUser,
+  classifyEdit,
+  createWikiPulseCardEntry,
+  describeWikiPulseState,
+  redactUser,
 } from './wikiPulsePresentation.js';
 
 /**
@@ -44,7 +47,10 @@ export {
  */
 
 const API_URL = '/api/wikipulse';
-const COUNTRIES_URL = new URL('./local_data/natural_earth/countries-iso.json', import.meta.url).href;
+const COUNTRIES_URL = new URL(
+  './local_data/natural_earth/countries-iso.json',
+  import.meta.url,
+).href;
 
 /** How long a blip stays on the globe before it expires. */
 const PIN_TTL_MS = 90_000;
@@ -58,7 +64,10 @@ const MAX_TRACKED_ROWS = 500;
  * @returns {object} A DataLayerManager-compatible layer module.
  */
 export function createWikiPulseLayer({
-  fetchImpl = null, loadCountries = null, pinTtlMs = PIN_TTL_MS, nowFn = Date.now,
+  fetchImpl = null,
+  loadCountries = null,
+  pinTtlMs = PIN_TTL_MS,
+  nowFn = Date.now,
 } = {}) {
   const doFetch = (...args) => (fetchImpl || globalThis.fetch)(...args);
 
@@ -81,10 +90,17 @@ export function createWikiPulseLayer({
   async function countries() {
     if (_countries) return _countries;
     if (!_countriesPromise) {
-      _countriesPromise = (loadCountries
-        ? loadCountries()
-        : doFetch(COUNTRIES_URL).then((r) => r.json()).then((d) => d.countries))
-        .then((list) => { _countries = list; return list; })
+      _countriesPromise = (
+        loadCountries
+          ? loadCountries()
+          : doFetch(COUNTRIES_URL)
+              .then((r) => r.json())
+              .then((d) => d.countries)
+      )
+        .then((list) => {
+          _countries = list;
+          return list;
+        })
         .catch((error) => {
           _countriesPromise = null;
           console.warn('[wiki-pulse] country polygons failed to load:', error);
@@ -134,7 +150,10 @@ export function createWikiPulseLayer({
     entity.__gevWikiId = row.id;
 
     const placedRow = {
-      ...row, lat: placed.lat, lon: placed.lon, __addedAt: nowFn(),
+      ...row,
+      lat: placed.lat,
+      lon: placed.lon,
+      __addedAt: nowFn(),
     };
     _rowsById.set(row.id, placedRow);
 
@@ -171,7 +190,9 @@ export function createWikiPulseLayer({
     _selectedId = row.id;
     const position = entity.position?.getValue(Cesium.JulianDate.now());
     if (!position) return;
-    setOverlayEntries(OVERLAY_SOURCE_ID, [createWikiPulseCardEntry(row, position)]);
+    setOverlayEntries(OVERLAY_SOURCE_ID, [
+      createWikiPulseCardEntry(row, position),
+    ]);
     setOverlaySourceVisible(OVERLAY_SOURCE_ID, true);
     selectEntityContext(entity);
     governorRequestRender('wiki-pulse:select');
@@ -223,7 +244,10 @@ export function createWikiPulseLayer({
       showCard(null);
       setOverlaySourceVisible(OVERLAY_SOURCE_ID, false);
       if (_dataSource) _dataSource.show = false;
-      if (_clickHandler) { _clickHandler.destroy(); _clickHandler = null; }
+      if (_clickHandler) {
+        _clickHandler.destroy();
+        _clickHandler = null;
+      }
       governorRequestRender('wiki-pulse:disable');
       return true;
     },
@@ -239,20 +263,23 @@ export function createWikiPulseLayer({
 
         for (const raw of rows) {
           if (!raw?.id || _rowsById.has(raw.id)) continue;
-          addRow({
-            id: raw.id,
-            wiki: raw.wiki,
-            title: raw.title,
-            url: raw.url,
-            // Redacted again here even though the proxy already redacts —
-            // a raw IP must never reach an entity through either path alone.
-            user: redactUser(raw.user),
-            bot: Boolean(raw.bot),
-            type: raw.type,
-            comment: raw.comment,
-            byteDelta: raw.byteDelta,
-            timestampMs: raw.timestampMs,
-          }, countryList);
+          addRow(
+            {
+              id: raw.id,
+              wiki: raw.wiki,
+              title: raw.title,
+              url: raw.url,
+              // Redacted again here even though the proxy already redacts —
+              // a raw IP must never reach an entity through either path alone.
+              user: redactUser(raw.user),
+              bot: Boolean(raw.bot),
+              type: raw.type,
+              comment: raw.comment,
+              byteDelta: raw.byteDelta,
+              timestampMs: raw.timestampMs,
+            },
+            countryList,
+          );
         }
 
         prune(nowFn());
@@ -278,7 +305,10 @@ export function createWikiPulseLayer({
         error: _error,
         status: _status,
         meta: describeWikiPulseState({
-          count: _count, ratePerMin, humanPct, status: _status,
+          count: _count,
+          ratePerMin,
+          humanPct,
+          status: _status,
         }),
       };
     },

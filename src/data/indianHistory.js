@@ -12,7 +12,12 @@ import {
   removeEntityContextsForLayer,
   selectEntityContext,
 } from './contextStore.js';
-import { isOwnedByOtherLayer, registerPickOwner, resolvePickId, unregisterPickOwner } from './pickRegistry.js';
+import {
+  isOwnedByOtherLayer,
+  registerPickOwner,
+  resolvePickId,
+  unregisterPickOwner,
+} from './pickRegistry.js';
 import { isOverlayCloseHit } from '../overlays/worldOverlayDraw.js';
 import {
   DEFAULT_KINGDOM,
@@ -39,7 +44,11 @@ import {
 
 // Re-exported so `src/data/indianHistory.js` stays the layer's single public entry point.
 export {
-  DEFAULT_KINGDOM, KINGDOM_IDS, createHistoryCardEntry, describeIndianHistoryState, validateKingdomData,
+  DEFAULT_KINGDOM,
+  KINGDOM_IDS,
+  createHistoryCardEntry,
+  describeIndianHistoryState,
+  validateKingdomData,
 } from './indianHistoryPresentation.js';
 
 /**
@@ -58,7 +67,10 @@ export {
  *    restore flow owns.
  */
 
-const DATA_URL = new URL('./local_data/indian_history/kingdoms.json', import.meta.url).href;
+const DATA_URL = new URL(
+  './local_data/indian_history/kingdoms.json',
+  import.meta.url,
+).href;
 /**
  * Camera altitude per degree of a kingdom's larger span when flying to it.
  * Generous on purpose: the HUD's circular keyhole crops the frame edges.
@@ -93,7 +105,8 @@ export function createIndianHistoryLayer({
     clearSource: clearOverlaySource,
     hitTest: hitTestWorldOverlay,
   },
-  screenSpaceEventHandlerFactory = (viewer) => new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas),
+  screenSpaceEventHandlerFactory = (viewer) =>
+    new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas),
 } = {}) {
   let _viewer = null;
   let _dataSource = null;
@@ -127,13 +140,18 @@ export function createIndianHistoryLayer({
   async function data() {
     if (_data) return _data;
     if (!_dataPromise) {
-      _dataPromise = (loadData ? loadData() : fetch(DATA_URL).then((r) => {
-        if (!r.ok) throw new Error(`kingdoms.json ${r.status}`);
-        return r.json();
-      }))
+      _dataPromise = (
+        loadData
+          ? loadData()
+          : fetch(DATA_URL).then((r) => {
+              if (!r.ok) throw new Error(`kingdoms.json ${r.status}`);
+              return r.json();
+            })
+      )
         .then((parsed) => {
           const problems = validateKingdomData(parsed);
-          if (problems.length) throw new Error(`invalid kingdoms.json: ${problems[0]}`);
+          if (problems.length)
+            throw new Error(`invalid kingdoms.json: ${problems[0]}`);
           _data = parsed;
           return parsed;
         })
@@ -150,7 +168,11 @@ export function createIndianHistoryLayer({
   }
 
   function notifyRowControls() {
-    try { _rowControlsListener?.(); } catch (error) { console.warn('[indian-history] row refresh failed:', error); }
+    try {
+      _rowControlsListener?.();
+    } catch (error) {
+      console.warn('[indian-history] row refresh failed:', error);
+    }
   }
 
   function tag(entity, kind, kingdom, item) {
@@ -163,9 +185,13 @@ export function createIndianHistoryLayer({
       label: item.name || item.title,
       properties: {
         kingdom: kingdom.name,
-        ...(kind === 'event' ? { year: formatYear(item.year, item.circa), summary: item.summary } : {}),
+        ...(kind === 'event'
+          ? { year: formatYear(item.year, item.circa), summary: item.summary }
+          : {}),
         ...(kind === 'city' ? { role: item.role, note: item.note } : {}),
-        ...(kind === 'kingdom' ? { period: kingdom.period.label, borders: 'approximate' } : {}),
+        ...(kind === 'kingdom'
+          ? { period: kingdom.period.label, borders: 'approximate' }
+          : {}),
         wikipedia: item.wiki,
       },
       latitude: kind === 'kingdom' ? kingdom.anchor.lat : item.lat,
@@ -191,7 +217,9 @@ export function createIndianHistoryLayer({
 
     kingdom.extents.forEach((extent, extentIndex) => {
       // `holes` (validated to pair with a single ring) cut areas out of it.
-      const holes = (extent.holes || []).map((ring) => Cesium.Cartesian3.fromDegreesArray(ring.flat()));
+      const holes = (extent.holes || []).map((ring) =>
+        Cesium.Cartesian3.fromDegreesArray(ring.flat()),
+      );
       extent.rings.forEach((ring, ringIndex) => {
         const positions = Cesium.Cartesian3.fromDegreesArray(ring.flat());
         const area = entities.add({
@@ -217,7 +245,10 @@ export function createIndianHistoryLayer({
         entities.add({
           id: `history:${kingdom.id}:extent:${extentIndex}:hole:${holeIndex}`,
           polyline: {
-            positions, width: 1.5, material: color.withAlpha(0.7), clampToGround: true,
+            positions,
+            width: 1.5,
+            material: color.withAlpha(0.7),
+            clampToGround: true,
           },
         });
       });
@@ -225,7 +256,10 @@ export function createIndianHistoryLayer({
 
     const title = entities.add({
       id: `history:${kingdom.id}:title`,
-      position: Cesium.Cartesian3.fromDegrees(kingdom.anchor.lon, kingdom.anchor.lat),
+      position: Cesium.Cartesian3.fromDegrees(
+        kingdom.anchor.lon,
+        kingdom.anchor.lat,
+      ),
       label: {
         text: `${kingdom.name.toUpperCase()}\n${kingdom.period.label}`,
         font: TITLE_FONT,
@@ -239,7 +273,13 @@ export function createIndianHistoryLayer({
       },
     });
     tag(title, 'kingdom', kingdom, kingdom);
-    const titleRecord = labelRecord(title, TITLE_FONT, kingdom.name.toUpperCase(), 44, 'title');
+    const titleRecord = labelRecord(
+      title,
+      TITLE_FONT,
+      kingdom.name.toUpperCase(),
+      44,
+      'title',
+    );
     const cityRecords = [];
     const eventRecords = [];
 
@@ -254,7 +294,9 @@ export function createIndianHistoryLayer({
         position,
         point: {
           pixelSize: capital ? 12 : city.role === 'provincial' ? 9 : 7,
-          color: Cesium.Color.fromCssColorString(capital ? HISTORY_COLORS.capital : HISTORY_COLORS.city),
+          color: Cesium.Color.fromCssColorString(
+            capital ? HISTORY_COLORS.capital : HISTORY_COLORS.city,
+          ),
           outlineColor: color,
           outlineWidth: 2,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -271,11 +313,19 @@ export function createIndianHistoryLayer({
           pixelOffset: new Cesium.Cartesian2(0, -16),
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
           // Minor cities fade out at whole-subcontinent zoom; capitals stay.
-          translucencyByDistance: capital ? undefined : new Cesium.NearFarScalar(8e6, 1, 1.6e7, 0),
+          translucencyByDistance: capital
+            ? undefined
+            : new Cesium.NearFarScalar(8e6, 1, 1.6e7, 0),
         },
       });
       tag(entity, 'city', kingdom, city);
-      const record = labelRecord(entity, capital ? CAPITAL_FONT : CITY_FONT, city.name, capital ? 18 : 16, 'city');
+      const record = labelRecord(
+        entity,
+        capital ? CAPITAL_FONT : CITY_FONT,
+        city.name,
+        capital ? 18 : 16,
+        'city',
+      );
       // Capitals always keep a label; a minor city's hides when there is no room.
       record.optional = !capital;
       cityRecords.push(record);
@@ -292,19 +342,23 @@ export function createIndianHistoryLayer({
       const entity = entities.add({
         id: `history:${kingdom.id}:event:${event.id}`,
         position,
-        point: needsMarker ? {
-          pixelSize: 8,
-          color: eventColor,
-          outlineColor: Cesium.Color.BLACK.withAlpha(0.6),
-          outlineWidth: 1,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        } : undefined,
+        point: needsMarker
+          ? {
+              pixelSize: 8,
+              color: eventColor,
+              outlineColor: Cesium.Color.BLACK.withAlpha(0.6),
+              outlineWidth: 1,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            }
+          : undefined,
         label: {
           text: `${event.number}. ${event.title}`,
           font: EVENT_FONT,
           fillColor: eventColor,
           showBackground: true,
-          backgroundColor: Cesium.Color.fromCssColorString('rgba(18, 12, 8, 0.78)'),
+          backgroundColor: Cesium.Color.fromCssColorString(
+            'rgba(18, 12, 8, 0.78)',
+          ),
           backgroundPadding: new Cesium.Cartesian2(6, 3),
           horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,
@@ -315,7 +369,16 @@ export function createIndianHistoryLayer({
       });
       tag(entity, 'event', kingdom, event);
       // Background padding (6, 3) widens the painted box beyond the text.
-      eventRecords.push(labelRecord(entity, EVENT_FONT, `${event.number}. ${event.title}`, 19, 'event', 12));
+      eventRecords.push(
+        labelRecord(
+          entity,
+          EVENT_FONT,
+          `${event.number}. ${event.title}`,
+          19,
+          'event',
+          12,
+        ),
+      );
     }
 
     // Placement priority: title, capitals, other cities, then events in date order.
@@ -338,7 +401,9 @@ export function createIndianHistoryLayer({
     const key = `${font}|${text}`;
     if (_textWidths.has(key)) return _textWidths.get(key);
     if (_measureCtx === undefined) {
-      _measureCtx = globalThis.document?.createElement?.('canvas')?.getContext?.('2d') || null;
+      _measureCtx =
+        globalThis.document?.createElement?.('canvas')?.getContext?.('2d') ||
+        null;
     }
     let width = text.length * 7;
     if (_measureCtx) {
@@ -365,7 +430,12 @@ export function createIndianHistoryLayer({
   }
 
   function candidatesFor(record) {
-    if (record.kind === 'title') return [[0, 0], [0, -30], [0, 30]];
+    if (record.kind === 'title')
+      return [
+        [0, 0],
+        [0, -30],
+        [0, 30],
+      ];
     if (record.kind === 'city') return cityLabelCandidates(record.w, record.h);
     return eventLabelCandidates(record.w, record.h);
   }
@@ -373,7 +443,12 @@ export function createIndianHistoryLayer({
   /** Re-place labels for the current camera; cheap (tens of labels). */
   function layoutLabels() {
     const scene = _viewer?.scene;
-    if (!_enabled || !_labels.length || typeof scene?.cartesianToCanvasCoordinates !== 'function') return;
+    if (
+      !_enabled ||
+      !_labels.length ||
+      typeof scene?.cartesianToCanvasCoordinates !== 'function'
+    )
+      return;
     const now = globalThis.performance?.now?.() ?? Date.now();
     if (now - _lastLayoutMs < LAYOUT_THROTTLE_MS) return;
     _lastLayoutMs = now;
@@ -394,18 +469,30 @@ export function createIndianHistoryLayer({
       if (!xy) continue;
       byId.set(record.entity.id, record);
       items.push({
-        id: record.entity.id, ...xy, w: record.w, h: record.h,
-        candidates: candidatesFor(record), optional: record.optional,
+        id: record.entity.id,
+        ...xy,
+        w: record.w,
+        h: record.h,
+        candidates: candidatesFor(record),
+        optional: record.optional,
       });
     }
     let changed = false;
     for (const [id, placement] of planLabelLayout(items, obstacles)) {
       const record = byId.get(id);
-      if (record.dx === placement.dx && record.dy === placement.dy && record.show === placement.show) continue;
+      if (
+        record.dx === placement.dx &&
+        record.dy === placement.dy &&
+        record.show === placement.show
+      )
+        continue;
       record.dx = placement.dx;
       record.dy = placement.dy;
       record.show = placement.show;
-      record.entity.label.pixelOffset = new Cesium.Cartesian2(placement.dx, placement.dy);
+      record.entity.label.pixelOffset = new Cesium.Cartesian2(
+        placement.dx,
+        placement.dy,
+      );
       record.entity.label.show = placement.show;
       changed = true;
     }
@@ -415,7 +502,9 @@ export function createIndianHistoryLayer({
   function installLayoutListeners() {
     const scene = _viewer?.scene;
     if (!_postRenderRemover && scene?.postRender?.addEventListener) {
-      _postRenderRemover = scene.postRender.addEventListener(() => layoutLabels());
+      _postRenderRemover = scene.postRender.addEventListener(() =>
+        layoutLabels(),
+      );
     }
     if (!_moveEndRemover && _viewer?.camera?.moveEnd?.addEventListener) {
       // The settled frame always gets a fresh layout, whatever the throttle said.
@@ -427,8 +516,14 @@ export function createIndianHistoryLayer({
   }
 
   function removeLayoutListeners() {
-    if (_postRenderRemover) { _postRenderRemover(); _postRenderRemover = null; }
-    if (_moveEndRemover) { _moveEndRemover(); _moveEndRemover = null; }
+    if (_postRenderRemover) {
+      _postRenderRemover();
+      _postRenderRemover = null;
+    }
+    if (_moveEndRemover) {
+      _moveEndRemover();
+      _moveEndRemover = null;
+    }
   }
 
   /** Publish the card for a picked entity, or clear it. */
@@ -447,18 +542,22 @@ export function createIndianHistoryLayer({
     const kingdom = kingdomById(kingdomId);
     if (!kingdom) return;
     let item = kingdom;
-    if (kind === 'city') item = kingdom.cities.find((city) => city.id === itemId);
-    if (kind === 'event') item = orderedEvents(kingdom).find((event) => event.id === itemId);
+    if (kind === 'city')
+      item = kingdom.cities.find((city) => city.id === itemId);
+    if (kind === 'event')
+      item = orderedEvents(kingdom).find((event) => event.id === itemId);
     if (!item) return;
     const point = kind === 'kingdom' ? kingdom.anchor : item;
     const position = Cesium.Cartesian3.fromDegrees(point.lon, point.lat);
     const card = createHistoryCardEntry(kind, kingdom, item, position);
     _card = { id: card.id, wiki: card.wiki };
     _cardEntityId = entity.id;
-    overlayHost.setEntries(OVERLAY_SOURCE_ID, [{
-      ...card,
-      activate: () => openCardLink(),
-    }]);
+    overlayHost.setEntries(OVERLAY_SOURCE_ID, [
+      {
+        ...card,
+        activate: () => openCardLink(),
+      },
+    ]);
     overlayHost.setVisible(OVERLAY_SOURCE_ID, true);
     selectEntityContext(entity);
     governorRequestRender('indian-history:select');
@@ -472,18 +571,30 @@ export function createIndianHistoryLayer({
 
   function flyToKingdom(kingdom) {
     if (!_viewer?.camera || !kingdom) return;
-    let west = 180; let south = 90; let east = -180; let north = -90;
+    let west = 180;
+    let south = 90;
+    let east = -180;
+    let north = -90;
     for (const extent of kingdom.extents) {
       for (const ring of extent.rings) {
         for (const [lon, lat] of ring) {
-          west = Math.min(west, lon); east = Math.max(east, lon);
-          south = Math.min(south, lat); north = Math.max(north, lat);
+          west = Math.min(west, lon);
+          east = Math.max(east, lon);
+          south = Math.min(south, lat);
+          north = Math.max(north, lat);
         }
       }
     }
-    const altitude = Math.max(FLY_MIN_ALTITUDE_M, Math.max(east - west, north - south) * FLY_ALTITUDE_M_PER_DEG);
+    const altitude = Math.max(
+      FLY_MIN_ALTITUDE_M,
+      Math.max(east - west, north - south) * FLY_ALTITUDE_M_PER_DEG,
+    );
     _viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees((west + east) / 2, (south + north) / 2, altitude),
+      destination: Cesium.Cartesian3.fromDegrees(
+        (west + east) / 2,
+        (south + north) / 2,
+        altitude,
+      ),
       duration: 1.6,
     });
   }
@@ -496,7 +607,8 @@ export function createIndianHistoryLayer({
       // The card sits on top of the globe, so it wins over whatever is under it.
       const x = click.position?.x;
       const y = click.position?.y;
-      const cardHit = _card && overlayHost.hitTest?.(x, y, { sourceId: OVERLAY_SOURCE_ID });
+      const cardHit =
+        _card && overlayHost.hitTest?.(x, y, { sourceId: OVERLAY_SOURCE_ID });
       if (cardHit) {
         if (isOverlayCloseHit(cardHit.rect, x, y)) showCard(null);
         else openCardLink();
@@ -516,7 +628,8 @@ export function createIndianHistoryLayer({
       }
       // A sibling layer's pick (an aircraft, a camera) leaves our card alone;
       // anything else — empty space, terrain, or a 3D-tile feature — closes it.
-      if (picked && isOwnedByOtherLayer(LAYER_ID, resolvePickId(picked))) return;
+      if (picked && isOwnedByOtherLayer(LAYER_ID, resolvePickId(picked)))
+        return;
       showCard(null);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
   }
@@ -542,7 +655,9 @@ export function createIndianHistoryLayer({
       if (_dataSource) _dataSource.show = true;
       installClickHandler(_viewer);
       installLayoutListeners();
-      registerPickOwner(LAYER_ID, (pickedId) => pickedId.startsWith('history:'));
+      registerPickOwner(LAYER_ID, (pickedId) =>
+        pickedId.startsWith('history:'),
+      );
       governorRequestRender('indian-history:enable');
       return true;
     },
@@ -552,7 +667,10 @@ export function createIndianHistoryLayer({
       showCard(null);
       overlayHost.setVisible(OVERLAY_SOURCE_ID, false);
       if (_dataSource) _dataSource.show = false;
-      if (_clickHandler) { _clickHandler.destroy(); _clickHandler = null; }
+      if (_clickHandler) {
+        _clickHandler.destroy();
+        _clickHandler = null;
+      }
       removeLayoutListeners();
       unregisterPickOwner(LAYER_ID);
       governorRequestRender('indian-history:disable');
@@ -610,7 +728,9 @@ export function createIndianHistoryLayer({
     getRowControls() {
       const selectedEra = eraOfKingdom(_kingdomId);
       const eraChips = HISTORY_ERAS.map((era) => {
-        const count = KINGDOM_CHIPS.filter((chip) => chip.era === era.id).length;
+        const count = KINGDOM_CHIPS.filter(
+          (chip) => chip.era === era.id,
+        ).length;
         const open = era.id === _eraId;
         return {
           id: `era:${era.id}`,
@@ -621,13 +741,17 @@ export function createIndianHistoryLayer({
           params: { era: era.id },
         };
       });
-      const kingdomChips = KINGDOM_CHIPS.filter((chip) => chip.era === _eraId).map((chip) => {
+      const kingdomChips = KINGDOM_CHIPS.filter(
+        (chip) => chip.era === _eraId,
+      ).map((chip) => {
         const kingdom = kingdomById(chip.id);
         return {
           id: chip.id,
           label: chip.label,
           active: chip.id === _kingdomId,
-          title: kingdom ? `${kingdom.name} · ${kingdom.period.label} — click to fly there` : chip.label,
+          title: kingdom
+            ? `${kingdom.name} · ${kingdom.period.label} — click to fly there`
+            : chip.label,
           params: { kingdom: chip.id },
         };
       });
@@ -646,7 +770,9 @@ export function createIndianHistoryLayer({
       return {
         // The manager's row line is "<source> · <ago>", so the selected
         // kingdom rides in `source`.
-        source: kingdom ? `${kingdom.name} · ${kingdom.period.label} · borders approximate` : layer.source,
+        source: kingdom
+          ? `${kingdom.name} · ${kingdom.period.label} · borders approximate`
+          : layer.source,
         count: _count,
         lastUpdate: _lastUpdate,
         error: _error,
@@ -665,7 +791,8 @@ export function createIndianHistoryLayer({
       clearRendered();
       overlayHost.clearSource(OVERLAY_SOURCE_ID);
       removeEntityContextsForLayer(LAYER_ID);
-      if (_dataSource && (viewer || _viewer)) (viewer || _viewer).dataSources.remove(_dataSource, true);
+      if (_dataSource && (viewer || _viewer))
+        (viewer || _viewer).dataSources.remove(_dataSource, true);
       _dataSource = null;
       _viewer = null;
       return true;

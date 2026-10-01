@@ -334,7 +334,12 @@ export function isOverlayCloseHit(rect, x, y) {
   const box = overlayCloseRect(rect);
   // A few pixels of slop: the glyph is small and this is a click target.
   const slop = 3;
-  return x >= box.x - slop && x <= box.x + box.w + slop && y >= box.y - slop && y <= box.y + box.h + slop;
+  return (
+    x >= box.x - slop &&
+    x <= box.x + box.w + slop &&
+    y >= box.y - slop &&
+    y <= box.y + box.h + slop
+  );
 }
 
 function drawCloseGlyph(ctx, entry, placement) {
@@ -450,7 +455,9 @@ export function measureOverlayEntry(ctx, entry, out = {}) {
   } else {
     // A closable card reserves room beside the title for its close glyph.
     const closeReserve = entry?.closable ? OVERLAY_CLOSE_SIZE_PX + 8 : 0;
-    out.w = Math.ceil(Math.max(titleWidth + closeReserve, detailWidth)) + out.padX * 2;
+    out.w =
+      Math.ceil(Math.max(titleWidth + closeReserve, detailWidth)) +
+      out.padX * 2;
     out.h = out.padY * 2 + out.titleH + details.length * out.lineH;
   }
   out.w = Math.max(8, out.w);

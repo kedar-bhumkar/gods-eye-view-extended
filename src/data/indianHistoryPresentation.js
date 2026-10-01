@@ -15,9 +15,21 @@ export const INDIAN_HISTORY_OVERLAY_SOURCE_ID = 'indian-history';
 export const HISTORY_ERAS = Object.freeze([
   Object.freeze({ id: 'ancient', label: 'ANCIENT', span: 'to c. 250 CE' }),
   Object.freeze({ id: 'classical', label: 'CLASSICAL', span: 'c. 250–700 CE' }),
-  Object.freeze({ id: 'early-medieval', label: 'EARLY MEDIEVAL', span: 'c. 700–1200 CE' }),
-  Object.freeze({ id: 'late-medieval', label: 'LATE MEDIEVAL', span: 'c. 1200–1526 CE' }),
-  Object.freeze({ id: 'early-modern', label: 'EARLY MODERN', span: '1498–1947 CE' }),
+  Object.freeze({
+    id: 'early-medieval',
+    label: 'EARLY MEDIEVAL',
+    span: 'c. 700–1200 CE',
+  }),
+  Object.freeze({
+    id: 'late-medieval',
+    label: 'LATE MEDIEVAL',
+    span: 'c. 1200–1526 CE',
+  }),
+  Object.freeze({
+    id: 'early-modern',
+    label: 'EARLY MODERN',
+    span: '1498–1947 CE',
+  }),
 ]);
 
 /**
@@ -27,59 +39,138 @@ export const HISTORY_ERAS = Object.freeze([
  * never reassign one. The dataset must contain exactly these ids, in this
  * order — pinned by indianHistoryPresentation.test.mjs.
  */
-export const KINGDOM_CHIPS = Object.freeze([
-  { id: 'nanda', label: 'NANDA', code: 'n', era: 'ancient' },
-  { id: 'maurya', label: 'MAURYA', code: 'm', era: 'ancient' },
-  { id: 'pandya', label: 'PANDYA', code: 'p', era: 'ancient' },
-  { id: 'indo-greek', label: 'INDO-GREEK', code: 'ig', era: 'ancient' },
-  { id: 'satavahana', label: 'SATAVAHANA', code: 's', era: 'ancient' },
-  { id: 'kushan', label: 'KUSHAN', code: 'ku', era: 'ancient' },
-  { id: 'western-satraps', label: 'WESTERN SATRAPS', code: 'ws', era: 'ancient' },
-  { id: 'vakataka', label: 'VAKATAKA', code: 'v', era: 'classical' },
-  { id: 'pallava', label: 'PALLAVA', code: 'l', era: 'classical' },
-  { id: 'gupta', label: 'GUPTA', code: 'g', era: 'classical' },
-  { id: 'alchon', label: 'ALCHON HUNS', code: 'ah', era: 'classical' },
-  { id: 'chalukya', label: 'CHALUKYA', code: 'c', era: 'classical' },
-  { id: 'harsha', label: 'HARSHA', code: 'h', era: 'classical' },
-  { id: 'karkota', label: 'KARKOTA', code: 'k', era: 'classical' },
-  { id: 'arab-sindh', label: 'ARAB SINDH', code: 'as', era: 'early-medieval' },
-  { id: 'pratihara', label: 'PRATIHARA', code: 'r', era: 'early-medieval' },
-  { id: 'pala', label: 'PALA', code: 'a', era: 'early-medieval' },
-  { id: 'rashtrakuta', label: 'RASHTRAKUTA', code: 't', era: 'early-medieval' },
-  { id: 'paramara', label: 'PARAMARA · BHOJA', code: 'b', era: 'early-medieval' },
-  { id: 'hindu-shahi', label: 'HINDU SHAHI', code: 'i', era: 'early-medieval' },
-  { id: 'chola', label: 'CHOLA', code: 'o', era: 'early-medieval' },
-  { id: 'ghaznavid', label: 'GHAZNAVID', code: 'gz', era: 'early-medieval' },
-  { id: 'hoysala', label: 'HOYSALA', code: 'w', era: 'early-medieval' },
-  { id: 'eastern-ganga', label: 'EASTERN GANGA', code: 'e', era: 'early-medieval' },
-  { id: 'kakatiya', label: 'KAKATIYA', code: 'y', era: 'early-medieval' },
-  { id: 'ghurid', label: 'GHURID', code: 'gh', era: 'early-medieval' },
-  { id: 'mamluk', label: 'DELHI · MAMLUK', code: 'dm', era: 'late-medieval' },
-  { id: 'khalji', label: 'DELHI · KHALJI', code: 'dk', era: 'late-medieval' },
-  { id: 'tughlaq', label: 'DELHI · TUGHLAQ', code: 'dt', era: 'late-medieval' },
-  { id: 'vijayanagara', label: 'VIJAYANAGARA', code: 'j', era: 'late-medieval' },
-  { id: 'bahmani', label: 'BAHMANI', code: 'bh', era: 'late-medieval' },
-  { id: 'bengal-sultanate', label: 'BENGAL SULTANATE', code: 'bs', era: 'late-medieval' },
-  { id: 'malwa-sultanate', label: 'MALWA SULTANATE', code: 'ms', era: 'late-medieval' },
-  { id: 'gujarat-sultanate', label: 'GUJARAT SULTANATE', code: 'gs', era: 'late-medieval' },
-  { id: 'sayyid', label: 'DELHI · SAYYID', code: 'ds', era: 'late-medieval' },
-  { id: 'lodi', label: 'DELHI · LODI', code: 'dl', era: 'late-medieval' },
-  { id: 'deccan-sultanates', label: 'DECCAN SULTANATES', code: 'dc', era: 'late-medieval' },
-  { id: 'portuguese', label: 'PORTUGUESE', code: 'pt', era: 'early-modern' },
-  { id: 'mughal', label: 'MUGHAL', code: 'mg', era: 'early-modern' },
-  { id: 'sur', label: 'SUR', code: 'su', era: 'early-modern' },
-  { id: 'dutch', label: 'DUTCH', code: 'nl', era: 'early-modern' },
-  { id: 'french', label: 'FRENCH', code: 'fr', era: 'early-modern' },
-  { id: 'maratha', label: 'MARATHA', code: 'x', era: 'early-modern' },
-  { id: 'hyderabad', label: 'HYDERABAD · NIZAMS', code: 'hy', era: 'early-modern' },
-  { id: 'durrani', label: 'DURRANI', code: 'du', era: 'early-modern' },
-  { id: 'company-rule', label: 'EAST INDIA COMPANY', code: 'ec', era: 'early-modern' },
-  { id: 'mysore', label: 'MYSORE · TIPU', code: 'my', era: 'early-modern' },
-  { id: 'sikh', label: 'SIKH EMPIRE', code: 'sk', era: 'early-modern' },
-  { id: 'british-raj', label: 'BRITISH RAJ', code: 'br', era: 'early-modern' },
-].map((chip) => Object.freeze(chip)));
+export const KINGDOM_CHIPS = Object.freeze(
+  [
+    { id: 'nanda', label: 'NANDA', code: 'n', era: 'ancient' },
+    { id: 'maurya', label: 'MAURYA', code: 'm', era: 'ancient' },
+    { id: 'pandya', label: 'PANDYA', code: 'p', era: 'ancient' },
+    { id: 'indo-greek', label: 'INDO-GREEK', code: 'ig', era: 'ancient' },
+    { id: 'satavahana', label: 'SATAVAHANA', code: 's', era: 'ancient' },
+    { id: 'kushan', label: 'KUSHAN', code: 'ku', era: 'ancient' },
+    {
+      id: 'western-satraps',
+      label: 'WESTERN SATRAPS',
+      code: 'ws',
+      era: 'ancient',
+    },
+    { id: 'vakataka', label: 'VAKATAKA', code: 'v', era: 'classical' },
+    { id: 'pallava', label: 'PALLAVA', code: 'l', era: 'classical' },
+    { id: 'gupta', label: 'GUPTA', code: 'g', era: 'classical' },
+    { id: 'alchon', label: 'ALCHON HUNS', code: 'ah', era: 'classical' },
+    { id: 'chalukya', label: 'CHALUKYA', code: 'c', era: 'classical' },
+    { id: 'harsha', label: 'HARSHA', code: 'h', era: 'classical' },
+    { id: 'karkota', label: 'KARKOTA', code: 'k', era: 'classical' },
+    {
+      id: 'arab-sindh',
+      label: 'ARAB SINDH',
+      code: 'as',
+      era: 'early-medieval',
+    },
+    { id: 'pratihara', label: 'PRATIHARA', code: 'r', era: 'early-medieval' },
+    { id: 'pala', label: 'PALA', code: 'a', era: 'early-medieval' },
+    {
+      id: 'rashtrakuta',
+      label: 'RASHTRAKUTA',
+      code: 't',
+      era: 'early-medieval',
+    },
+    {
+      id: 'paramara',
+      label: 'PARAMARA · BHOJA',
+      code: 'b',
+      era: 'early-medieval',
+    },
+    {
+      id: 'hindu-shahi',
+      label: 'HINDU SHAHI',
+      code: 'i',
+      era: 'early-medieval',
+    },
+    { id: 'chola', label: 'CHOLA', code: 'o', era: 'early-medieval' },
+    { id: 'ghaznavid', label: 'GHAZNAVID', code: 'gz', era: 'early-medieval' },
+    { id: 'hoysala', label: 'HOYSALA', code: 'w', era: 'early-medieval' },
+    {
+      id: 'eastern-ganga',
+      label: 'EASTERN GANGA',
+      code: 'e',
+      era: 'early-medieval',
+    },
+    { id: 'kakatiya', label: 'KAKATIYA', code: 'y', era: 'early-medieval' },
+    { id: 'ghurid', label: 'GHURID', code: 'gh', era: 'early-medieval' },
+    { id: 'mamluk', label: 'DELHI · MAMLUK', code: 'dm', era: 'late-medieval' },
+    { id: 'khalji', label: 'DELHI · KHALJI', code: 'dk', era: 'late-medieval' },
+    {
+      id: 'tughlaq',
+      label: 'DELHI · TUGHLAQ',
+      code: 'dt',
+      era: 'late-medieval',
+    },
+    {
+      id: 'vijayanagara',
+      label: 'VIJAYANAGARA',
+      code: 'j',
+      era: 'late-medieval',
+    },
+    { id: 'bahmani', label: 'BAHMANI', code: 'bh', era: 'late-medieval' },
+    {
+      id: 'bengal-sultanate',
+      label: 'BENGAL SULTANATE',
+      code: 'bs',
+      era: 'late-medieval',
+    },
+    {
+      id: 'malwa-sultanate',
+      label: 'MALWA SULTANATE',
+      code: 'ms',
+      era: 'late-medieval',
+    },
+    {
+      id: 'gujarat-sultanate',
+      label: 'GUJARAT SULTANATE',
+      code: 'gs',
+      era: 'late-medieval',
+    },
+    { id: 'sayyid', label: 'DELHI · SAYYID', code: 'ds', era: 'late-medieval' },
+    { id: 'lodi', label: 'DELHI · LODI', code: 'dl', era: 'late-medieval' },
+    {
+      id: 'deccan-sultanates',
+      label: 'DECCAN SULTANATES',
+      code: 'dc',
+      era: 'late-medieval',
+    },
+    { id: 'portuguese', label: 'PORTUGUESE', code: 'pt', era: 'early-modern' },
+    { id: 'mughal', label: 'MUGHAL', code: 'mg', era: 'early-modern' },
+    { id: 'sur', label: 'SUR', code: 'su', era: 'early-modern' },
+    { id: 'dutch', label: 'DUTCH', code: 'nl', era: 'early-modern' },
+    { id: 'french', label: 'FRENCH', code: 'fr', era: 'early-modern' },
+    { id: 'maratha', label: 'MARATHA', code: 'x', era: 'early-modern' },
+    {
+      id: 'hyderabad',
+      label: 'HYDERABAD · NIZAMS',
+      code: 'hy',
+      era: 'early-modern',
+    },
+    { id: 'durrani', label: 'DURRANI', code: 'du', era: 'early-modern' },
+    {
+      id: 'company-rule',
+      label: 'EAST INDIA COMPANY',
+      code: 'ec',
+      era: 'early-modern',
+    },
+    { id: 'mysore', label: 'MYSORE · TIPU', code: 'my', era: 'early-modern' },
+    { id: 'sikh', label: 'SIKH EMPIRE', code: 'sk', era: 'early-modern' },
+    {
+      id: 'british-raj',
+      label: 'BRITISH RAJ',
+      code: 'br',
+      era: 'early-modern',
+    },
+  ].map((chip) => Object.freeze(chip)),
+);
 export const KINGDOM_IDS = Object.freeze(KINGDOM_CHIPS.map((chip) => chip.id));
-export const KINGDOM_CODES = Object.freeze(Object.fromEntries(KINGDOM_CHIPS.map((chip) => [chip.id, chip.code])));
+export const KINGDOM_CODES = Object.freeze(
+  Object.fromEntries(KINGDOM_CHIPS.map((chip) => [chip.id, chip.code])),
+);
 export const ERA_IDS = Object.freeze(HISTORY_ERAS.map((era) => era.id));
 
 /** @returns {string|null} The era a kingdom's chip belongs to. */
@@ -125,7 +216,9 @@ export function formatYear(year, circa = false) {
 export function wrapText(text, width = CARD_WRAP_CHARS) {
   const lines = [];
   let line = '';
-  for (const word of String(text || '').split(/\s+/).filter(Boolean)) {
+  for (const word of String(text || '')
+    .split(/\s+/)
+    .filter(Boolean)) {
     if (line && line.length + 1 + word.length > width) {
       lines.push(line);
       line = word;
@@ -138,8 +231,14 @@ export function wrapText(text, width = CARD_WRAP_CHARS) {
 }
 
 function validPoint(item) {
-  return Number.isFinite(item?.lat) && Number.isFinite(item?.lon)
-    && item.lat >= -90 && item.lat <= 90 && item.lon >= -180 && item.lon <= 180;
+  return (
+    Number.isFinite(item?.lat) &&
+    Number.isFinite(item?.lon) &&
+    item.lat >= -90 &&
+    item.lat <= 90 &&
+    item.lon >= -180 &&
+    item.lon <= 180
+  );
 }
 
 /**
@@ -169,27 +268,47 @@ export function validateKingdomData(data) {
     if (!extents.length) problems.push(`${at}: no extents`);
     for (const extent of extents) {
       const rings = Array.isArray(extent?.rings) ? extent.rings : [];
-      if (!rings.length) problems.push(`${at}: extent ${extent?.id} has no rings`);
+      if (!rings.length)
+        problems.push(`${at}: extent ${extent?.id} has no rings`);
       const holes = Array.isArray(extent?.holes) ? extent.holes : [];
-      if (holes.length && rings.length !== 1) problems.push(`${at}: extent ${extent?.id} holes need exactly one ring`);
+      if (holes.length && rings.length !== 1)
+        problems.push(
+          `${at}: extent ${extent?.id} holes need exactly one ring`,
+        );
       for (const ring of [...rings, ...holes]) {
-        const closed = Array.isArray(ring) && ring.length >= 4
-          && ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1];
-        const finite = Array.isArray(ring) && ring.every((p) => validPoint({ lon: p?.[0], lat: p?.[1] }));
-        if (!closed || !finite) problems.push(`${at}: extent ${extent?.id} ring is not a closed lon/lat ring`);
+        const closed =
+          Array.isArray(ring) &&
+          ring.length >= 4 &&
+          ring[0][0] === ring.at(-1)[0] &&
+          ring[0][1] === ring.at(-1)[1];
+        const finite =
+          Array.isArray(ring) &&
+          ring.every((p) => validPoint({ lon: p?.[0], lat: p?.[1] }));
+        if (!closed || !finite)
+          problems.push(
+            `${at}: extent ${extent?.id} ring is not a closed lon/lat ring`,
+          );
       }
     }
     for (const city of kingdom.cities || []) {
-      if (!city?.id || !city.name || !validPoint(city)) problems.push(`${at}: bad city ${city?.id}`);
-      if (!CITY_ROLES.has(city?.role)) problems.push(`${at}: city ${city?.id} bad role`);
-      if (!isWikipediaUrl(city?.wiki)) problems.push(`${at}: city ${city?.id} bad wiki url`);
+      if (!city?.id || !city.name || !validPoint(city))
+        problems.push(`${at}: bad city ${city?.id}`);
+      if (!CITY_ROLES.has(city?.role))
+        problems.push(`${at}: city ${city?.id} bad role`);
+      if (!isWikipediaUrl(city?.wiki))
+        problems.push(`${at}: city ${city?.id} bad wiki url`);
     }
     for (const event of kingdom.events || []) {
       if (!event?.id || !event.title || !event.summary || !validPoint(event)) {
         problems.push(`${at}: bad event ${event?.id}`);
       }
-      if (!isWikipediaUrl(event?.wiki)) problems.push(`${at}: event ${event?.id} bad wiki url`);
-      if (!Number.isFinite(event?.year) || event.year < start || event.year > end) {
+      if (!isWikipediaUrl(event?.wiki))
+        problems.push(`${at}: event ${event?.id} bad wiki url`);
+      if (
+        !Number.isFinite(event?.year) ||
+        event.year < start ||
+        event.year > end
+      ) {
         problems.push(`${at}: event ${event?.id} year outside period`);
       }
     }
@@ -211,8 +330,12 @@ export function siteKey(item) {
 
 /** Overlap area of two centre-anchored boxes. */
 function overlapArea(a, b) {
-  const w = Math.min(a.x + a.w / 2, b.x + b.w / 2) - Math.max(a.x - a.w / 2, b.x - b.w / 2);
-  const h = Math.min(a.y + a.h / 2, b.y + b.h / 2) - Math.max(a.y - a.h / 2, b.y - b.h / 2);
+  const w =
+    Math.min(a.x + a.w / 2, b.x + b.w / 2) -
+    Math.max(a.x - a.w / 2, b.x - b.w / 2);
+  const h =
+    Math.min(a.y + a.h / 2, b.y + b.h / 2) -
+    Math.max(a.y - a.h / 2, b.y - b.h / 2);
   return w > 0 && h > 0 ? w * h : 0;
 }
 
@@ -259,7 +382,12 @@ export function planLabelLayout(items, obstacles = []) {
 export function cityLabelCandidates(w, h) {
   const gapY = h / 2 + 8;
   const gapX = w / 2 + 9;
-  return [[0, -gapY], [gapX, 0], [-gapX, 0], [0, gapY]];
+  return [
+    [0, -gapY],
+    [gapX, 0],
+    [-gapX, 0],
+    [0, gapY],
+  ];
 }
 
 /**
@@ -285,12 +413,20 @@ export function eventLabelCandidates(w, h, rows = 6) {
     out.push([side, i * step], [-side, i * step]);
   }
   // Stable sort by distance; a small bias keeps "below" ahead of equal ties.
-  const cost = ([dx, dy]) => Math.hypot(dx, dy) - (dx === 0 && dy > 0 ? 0.5 : 0);
-  return out.map((c, i) => ({ c, i, d: cost(c) })).sort((a, b) => a.d - b.d || a.i - b.i).map((x) => x.c);
+  const cost = ([dx, dy]) =>
+    Math.hypot(dx, dy) - (dx === 0 && dy > 0 ? 0.5 : 0);
+  return out
+    .map((c, i) => ({ c, i, d: cost(c) }))
+    .sort((a, b) => a.d - b.d || a.i - b.i)
+    .map((x) => x.c);
 }
 
 /** Status line under the layer's toggle row. */
-export function describeIndianHistoryState({ kingdom = null, error = null, loading = false } = {}) {
+export function describeIndianHistoryState({
+  kingdom = null,
+  error = null,
+  loading = false,
+} = {}) {
   if (error) return `history data unavailable · ${error}`;
   if (!kingdom) return loading ? 'loading kingdoms…' : 'pick a kingdom';
   const cities = kingdom.cities?.length || 0;
@@ -303,13 +439,32 @@ export function historyLegend(kingdom) {
   const cities = kingdom?.cities || [];
   const capitals = cities.filter((city) => city.role === 'capital').length;
   return [
-    { id: 'capital', label: 'Capital', color: HISTORY_COLORS.capital, count: capitals },
-    { id: 'city', label: 'City', color: HISTORY_COLORS.city, count: cities.length - capitals },
-    { id: 'event', label: 'Event', color: HISTORY_COLORS.event, count: kingdom?.events?.length || 0 },
+    {
+      id: 'capital',
+      label: 'Capital',
+      color: HISTORY_COLORS.capital,
+      count: capitals,
+    },
+    {
+      id: 'city',
+      label: 'City',
+      color: HISTORY_COLORS.city,
+      count: cities.length - capitals,
+    },
+    {
+      id: 'event',
+      label: 'Event',
+      color: HISTORY_COLORS.event,
+      count: kingdom?.events?.length || 0,
+    },
   ];
 }
 
-const ROLE_LABELS = { capital: 'Capital', provincial: 'Provincial capital', city: 'City' };
+const ROLE_LABELS = {
+  capital: 'Capital',
+  provincial: 'Provincial capital',
+  city: 'City',
+};
 const LINK_HINT = '↗ Click the card for Wikipedia · ✕ to close';
 
 function cardBase(id, position, accent) {
@@ -360,7 +515,11 @@ export function createHistoryCardEntry(kind, kingdom, item, position) {
   }
   if (kind === 'city') {
     return {
-      ...cardBase(`selected:city:${kingdom.id}:${item.id}`, position, HISTORY_COLORS[item.role === 'capital' ? 'capital' : 'city']),
+      ...cardBase(
+        `selected:city:${kingdom.id}:${item.id}`,
+        position,
+        HISTORY_COLORS[item.role === 'capital' ? 'capital' : 'city'],
+      ),
       title: item.name,
       details: [
         `${ROLE_LABELS[item.role] || 'City'} · ${kingdom.name}`,
@@ -372,7 +531,11 @@ export function createHistoryCardEntry(kind, kingdom, item, position) {
     };
   }
   return {
-    ...cardBase(`selected:event:${kingdom.id}:${item.id}`, position, HISTORY_COLORS.event),
+    ...cardBase(
+      `selected:event:${kingdom.id}:${item.id}`,
+      position,
+      HISTORY_COLORS.event,
+    ),
     title: `${item.number ? `${item.number}. ` : ''}${item.title}`,
     details: [
       `${formatYear(item.year, item.circa)} · ${kingdom.name}`,

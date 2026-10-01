@@ -35,14 +35,21 @@ export function chooseImpactFloor(rows, budget = MAX_PINS) {
   const cap = Math.max(1, Math.floor(Number(budget) || MAX_PINS));
   const counts = [0, 0, 0, 0, 0, 0];
   for (const row of list) {
-    const impact = Math.min(5, Math.max(1, Math.round(Number(row?.impact) || 1)));
+    const impact = Math.min(
+      5,
+      Math.max(1, Math.round(Number(row?.impact) || 1)),
+    );
     counts[impact]++;
   }
   let running = 0;
   for (let floor = 5; floor >= 1; floor--) {
     const next = running + counts[floor];
     if (next > cap) {
-      return { floor: floor + 1, shown: running, hidden: list.length - running };
+      return {
+        floor: floor + 1,
+        shown: running,
+        hidden: list.length - running,
+      };
     }
     running = next;
   }
@@ -50,8 +57,15 @@ export function chooseImpactFloor(rows, budget = MAX_PINS) {
 }
 
 /** Human summary for the toggle row's meta line. */
-export function describeNewsState({ country, day, shown, hidden, unavailable }) {
-  if (unavailable) return 'news database unavailable — run scripts/news-ingest.mjs';
+export function describeNewsState({
+  country,
+  day,
+  shown,
+  hidden,
+  unavailable,
+}) {
+  if (unavailable)
+    return 'news database unavailable — run scripts/news-ingest.mjs';
   if (!country) return 'fly over a country to see its news';
   if (!shown) return `${country} · ${day} · nothing ingested for this day`;
   const held = hidden > 0 ? ` · ${hidden} lower-impact hidden` : '';

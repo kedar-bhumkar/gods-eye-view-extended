@@ -100,7 +100,11 @@ function withPublishedBase(
 
 // This fork reserves three far-end tokens for its own layers; upstream's
 // front-allocated tokens can never reach them.
-const FORK_TOKENS = Object.freeze({ 'indian-history': 'zh', news: 'zn', 'wiki-pulse': 'zp' });
+const FORK_TOKENS = Object.freeze({
+  'indian-history': 'zh',
+  news: 'zn',
+  'wiki-pulse': 'zp',
+});
 const FORK_TOKEN_COUNT = Object.keys(FORK_TOKENS).length;
 
 function writeCodecFixture(cwd, rows, entries) {
@@ -277,7 +281,10 @@ test('PR B manually replaces provisional 0 with 3 after PR A publishes 0', () =>
     );
     const corrected = runCheck();
     assert.equal(corrected.status, 0, corrected.stderr);
-    assert.match(corrected.stdout, new RegExp(`${29 + FORK_TOKEN_COUNT} published, 1 new`));
+    assert.match(
+      corrected.stdout,
+      new RegExp(`${29 + FORK_TOKEN_COUNT} published, 1 new`),
+    );
   });
 });
 

@@ -4,7 +4,8 @@
  */
 import { redactUser as redactWikiPulseUser } from '../../src/data/wikiPulsePresentation.js';
 
-const WIKI_PULSE_STREAM_URL = 'https://stream.wikimedia.org/v2/stream/recentchange';
+const WIKI_PULSE_STREAM_URL =
+  'https://stream.wikimedia.org/v2/stream/recentchange';
 /** Reconnect delays after a dropped stream, capped at the last entry. */
 const WIKI_PULSE_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000];
 /** Oldest-evicted ring buffer of relayed events. */
@@ -78,12 +79,16 @@ export function createWikiPulseProxyMiddleware({
 
     const lengthNew = Number(event.length?.new);
     const lengthOld = Number(event.length?.old);
-    const byteDelta = Number.isFinite(lengthNew) && Number.isFinite(lengthOld)
-      ? lengthNew - lengthOld
-      : null;
+    const byteDelta =
+      Number.isFinite(lengthNew) && Number.isFinite(lengthOld)
+        ? lengthNew - lengthOld
+        : null;
     const title = String(event.title || '').trim() || null;
-    const url = event.meta?.uri
-      || (title ? `https://${serverName}/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}` : null);
+    const url =
+      event.meta?.uri ||
+      (title
+        ? `https://${serverName}/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`
+        : null);
     const timestampSec = Number(event.timestamp);
 
     return {
@@ -95,7 +100,8 @@ export function createWikiPulseProxyMiddleware({
       user: redactWikiPulseUser(event.user),
       bot: Boolean(event.bot),
       type: event.type,
-      comment: typeof event.comment === 'string' ? event.comment.slice(0, 280) : null,
+      comment:
+        typeof event.comment === 'string' ? event.comment.slice(0, 280) : null,
       byteDelta,
       timestampMs: Number.isFinite(timestampSec) ? timestampSec * 1000 : now(),
     };
@@ -114,9 +120,16 @@ export function createWikiPulseProxyMiddleware({
         const jsonText = line.slice(5).trim();
         if (!jsonText) continue;
         let event;
-        try { event = JSON.parse(jsonText); } catch { continue; }
+        try {
+          event = JSON.parse(jsonText);
+        } catch {
+          continue;
+        }
         const row = normalizeEvent(event);
-        if (row) { pushRow(row); _lastEventAt = now(); }
+        if (row) {
+          pushRow(row);
+          _lastEventAt = now();
+        }
       }
       index = text.indexOf('\n\n');
     }
@@ -124,7 +137,10 @@ export function createWikiPulseProxyMiddleware({
   }
 
   function scheduleReconnect(generation) {
-    const delay = WIKI_PULSE_BACKOFF_MS[Math.min(_reconnectAttempt, WIKI_PULSE_BACKOFF_MS.length - 1)];
+    const delay =
+      WIKI_PULSE_BACKOFF_MS[
+        Math.min(_reconnectAttempt, WIKI_PULSE_BACKOFF_MS.length - 1)
+      ];
     _reconnectAttempt += 1;
     _status = 'degraded';
     clearTimeout(_reconnectTimer);
@@ -159,7 +175,11 @@ export function createWikiPulseProxyMiddleware({
       let buffered = '';
       for (;;) {
         if (generation !== _generation) {
-          try { await reader.cancel(); } catch { /* already gone */ }
+          try {
+            await reader.cancel();
+          } catch {
+            /* already gone */
+          }
           return;
         }
         // eslint-disable-next-line no-await-in-loop
@@ -180,8 +200,11 @@ export function createWikiPulseProxyMiddleware({
 
   /** Idempotent lazy connect — safe to call on every request and on a tick. */
   function ensureConnection() {
-    if (_status === 'live' || _status === 'connecting' || _reconnectTimer) return _activePromise;
-    _activePromise = connect(_generation).finally(() => { _activePromise = null; });
+    if (_status === 'live' || _status === 'connecting' || _reconnectTimer)
+      return _activePromise;
+    _activePromise = connect(_generation).finally(() => {
+      _activePromise = null;
+    });
     return _activePromise;
   }
 
@@ -204,24 +227,33 @@ export function createWikiPulseProxyMiddleware({
     }
     ensureConnection();
     const params = new URL(req.url || '', 'http://localhost').searchParams;
-    const requestedLimit = Number.parseInt(String(params.get('limit') ?? ''), 10);
+    const requestedLimit = Number.parseInt(
+      String(params.get('limit') ?? ''),
+      10,
+    );
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(WIKI_PULSE_BUFFER_MAX, Math.max(1, requestedLimit))
       : WIKI_PULSE_BUFFER_MAX;
     res.statusCode = 200;
     res.setHeader('content-type', 'application/json; charset=utf-8');
     res.setHeader('cache-control', 'no-store');
-    res.end(JSON.stringify({
-      rows: _buffer.slice(-limit),
-      source: 'Wikimedia EventStreams',
-      ...statusSnapshot(),
-    }));
+    res.end(
+      JSON.stringify({
+        rows: _buffer.slice(-limit),
+        source: 'Wikimedia EventStreams',
+        ...statusSnapshot(),
+      }),
+    );
   }
 
   function startTick() {
     if (_tickTimer) return;
     _tickTimer = setInterval(() => {
-      try { ensureConnection(); } catch { /* ignore */ }
+      try {
+        ensureConnection();
+      } catch {
+        /* ignore */
+      }
     }, WIKI_PULSE_TICK_MS);
     _tickTimer.unref?.();
   }
@@ -233,7 +265,13 @@ export function createWikiPulseProxyMiddleware({
     _reconnectTimer = null;
     clearInterval(_tickTimer);
     _tickTimer = null;
-    if (_controller) { try { _controller.abort(); } catch { /* already aborted */ } }
+    if (_controller) {
+      try {
+        _controller.abort();
+      } catch {
+        /* already aborted */
+      }
+    }
     _controller = null;
     _buffer = [];
     _status = 'idle';
@@ -260,7 +298,9 @@ export function createWikiPulseProxyMiddleware({
  */
 export function wikiPulseProxy() {
   const api = createWikiPulseProxyMiddleware({});
-  const install = (middlewares) => { middlewares.use('/api/wikipulse', api.handleWikiPulse); };
+  const install = (middlewares) => {
+    middlewares.use('/api/wikipulse', api.handleWikiPulse);
+  };
   return {
     name: 'wiki-pulse-proxy',
     configureServer(server) {
@@ -274,6 +314,8 @@ export function wikiPulseProxy() {
       server.httpServer?.on('close', api.dispose);
     },
     // Middleware-mode backstop: there is no httpServer to hang 'close' on.
-    closeBundle() { api.dispose(); },
+    closeBundle() {
+      api.dispose();
+    },
   };
 }

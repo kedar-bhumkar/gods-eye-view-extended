@@ -35,7 +35,8 @@ export function redactUser(user) {
   const value = String(user ?? '').trim();
   if (!value) return 'Anonymous editor';
   if (IPV4_RE.test(value)) return 'Anonymous editor';
-  if (value.includes(':') && value.split(':').length > 2 && IPV6_RE.test(value)) return 'Anonymous editor';
+  if (value.includes(':') && value.split(':').length > 2 && IPV6_RE.test(value))
+    return 'Anonymous editor';
   return value;
 }
 
@@ -58,10 +59,15 @@ export function classifyEdit(event) {
 
 /** Human summary for the toggle row's meta line. */
 export function describeWikiPulseState({
-  count = 0, ratePerMin = 0, humanPct = null, status = 'idle',
+  count = 0,
+  ratePerMin = 0,
+  humanPct = null,
+  status = 'idle',
 } = {}) {
-  if (status === 'idle' || status === 'connecting') return 'connecting to Wikimedia EventStreams…';
-  if (status === 'degraded' && !count) return 'reconnecting to Wikimedia EventStreams…';
+  if (status === 'idle' || status === 'connecting')
+    return 'connecting to Wikimedia EventStreams…';
+  if (status === 'degraded' && !count)
+    return 'reconnecting to Wikimedia EventStreams…';
   if (!count) return 'no edits observed yet';
   const human = humanPct == null ? '' : ` · ${Math.round(humanPct)}% human`;
   const degraded = status === 'degraded' ? ' · reconnecting' : '';
@@ -81,8 +87,12 @@ export function describeWikiPulseState({
 export function createWikiPulseCardEntry(row, position) {
   const { color, isBot } = classifyEdit(row);
   const bytes = Number(row.byteDelta);
-  const byteText = Number.isFinite(bytes) ? `${bytes >= 0 ? '+' : ''}${bytes} bytes` : 'size unknown';
-  const when = row.timestampMs ? new Date(row.timestampMs).toISOString().slice(11, 16) : '';
+  const byteText = Number.isFinite(bytes)
+    ? `${bytes >= 0 ? '+' : ''}${bytes} bytes`
+    : 'size unknown';
+  const when = row.timestampMs
+    ? new Date(row.timestampMs).toISOString().slice(11, 16)
+    : '';
   const editor = redactUser(row.user);
   return {
     id: `selected:${row.id}`,

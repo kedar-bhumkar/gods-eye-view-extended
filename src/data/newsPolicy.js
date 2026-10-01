@@ -30,11 +30,51 @@ export const NEWS_GRADER_ID = 'coverage-v1';
  * @type {ReadonlyArray<{impact:number,id:string,label:string,color:string,dotPx:number,labelPriority:number,blurb:string}>}
  */
 export const NEWS_IMPACT_BANDS = Object.freeze([
-  Object.freeze({ impact: 5, id: 'critical', label: 'CRITICAL', color: '#FF2D2D', dotPx: 14, labelPriority: 5000, blurb: 'Ran on 12 or more outlets' }),
-  Object.freeze({ impact: 4, id: 'major', label: 'MAJOR', color: '#FF6B1A', dotPx: 12, labelPriority: 4000, blurb: 'Ran on 6 or more outlets' }),
-  Object.freeze({ impact: 3, id: 'notable', label: 'NOTABLE', color: '#FFC21A', dotPx: 10, labelPriority: 3000, blurb: 'Ran on 3 or more outlets' }),
-  Object.freeze({ impact: 2, id: 'routine', label: 'ROUTINE', color: '#7ED957', dotPx: 8, labelPriority: 2000, blurb: 'Ran on 2 outlets' }),
-  Object.freeze({ impact: 1, id: 'minor', label: 'MINOR', color: '#4FC3D9', dotPx: 7, labelPriority: 1000, blurb: 'Single outlet' }),
+  Object.freeze({
+    impact: 5,
+    id: 'critical',
+    label: 'CRITICAL',
+    color: '#FF2D2D',
+    dotPx: 14,
+    labelPriority: 5000,
+    blurb: 'Ran on 12 or more outlets',
+  }),
+  Object.freeze({
+    impact: 4,
+    id: 'major',
+    label: 'MAJOR',
+    color: '#FF6B1A',
+    dotPx: 12,
+    labelPriority: 4000,
+    blurb: 'Ran on 6 or more outlets',
+  }),
+  Object.freeze({
+    impact: 3,
+    id: 'notable',
+    label: 'NOTABLE',
+    color: '#FFC21A',
+    dotPx: 10,
+    labelPriority: 3000,
+    blurb: 'Ran on 3 or more outlets',
+  }),
+  Object.freeze({
+    impact: 2,
+    id: 'routine',
+    label: 'ROUTINE',
+    color: '#7ED957',
+    dotPx: 8,
+    labelPriority: 2000,
+    blurb: 'Ran on 2 outlets',
+  }),
+  Object.freeze({
+    impact: 1,
+    id: 'minor',
+    label: 'MINOR',
+    color: '#4FC3D9',
+    dotPx: 7,
+    labelPriority: 1000,
+    blurb: 'Single outlet',
+  }),
 ]);
 
 /**
@@ -74,11 +114,52 @@ const MS_PER_DAY = 86_400_000;
  * stories, which is a worse failure than splitting one story in two.
  */
 const HEADLINE_STOPWORDS = new Set([
-  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'has', 'have', 'had',
-  'are', 'was', 'were', 'will', 'would', 'says', 'said', 'after', 'over',
-  'into', 'amid', 'its', 'his', 'her', 'their', 'they', 'but', 'not', 'you',
-  'who', 'why', 'how', 'what', 'when', 'where', 'new', 'news', 'live',
-  'updates', 'update', 'video', 'watch', 'read', 'here', 'more', 'top',
+  'the',
+  'and',
+  'for',
+  'with',
+  'that',
+  'this',
+  'from',
+  'has',
+  'have',
+  'had',
+  'are',
+  'was',
+  'were',
+  'will',
+  'would',
+  'says',
+  'said',
+  'after',
+  'over',
+  'into',
+  'amid',
+  'its',
+  'his',
+  'her',
+  'their',
+  'they',
+  'but',
+  'not',
+  'you',
+  'who',
+  'why',
+  'how',
+  'what',
+  'when',
+  'where',
+  'new',
+  'news',
+  'live',
+  'updates',
+  'update',
+  'video',
+  'watch',
+  'read',
+  'here',
+  'more',
+  'top',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -92,7 +173,9 @@ const HEADLINE_STOPWORDS = new Set([
  * @returns {string|null} Uppercase two-letter code, or null.
  */
 export function normalizeCountryCode(value) {
-  const text = String(value ?? '').trim().toUpperCase();
+  const text = String(value ?? '')
+    .trim()
+    .toUpperCase();
   return COUNTRY_PATTERN.test(text) ? text : null;
 }
 
@@ -133,7 +216,9 @@ export function addDays(dayKey, delta) {
   const day = normalizeDayKey(dayKey);
   const step = Number(delta);
   if (!day || !Number.isFinite(step)) return null;
-  return dayKeyFromMs(Date.parse(`${day}T00:00:00.000Z`) + Math.trunc(step) * MS_PER_DAY);
+  return dayKeyFromMs(
+    Date.parse(`${day}T00:00:00.000Z`) + Math.trunc(step) * MS_PER_DAY,
+  );
 }
 
 /**
@@ -150,7 +235,8 @@ export function dayKeyRange(fromDay, toDay) {
   const endMs = Date.parse(`${end}T00:00:00.000Z`);
   if (endMs < startMs) return [];
   const days = [];
-  for (let ms = startMs; ms <= endMs; ms += MS_PER_DAY) days.push(dayKeyFromMs(ms));
+  for (let ms = startMs; ms <= endMs; ms += MS_PER_DAY)
+    days.push(dayKeyFromMs(ms));
   return days;
 }
 
@@ -193,13 +279,19 @@ export function gdeltStamp(dayKey, boundary = 'start') {
  * @param {number} [options.nowMs] Epoch ms treated as "now"; defaults to the real clock.
  * @returns {Array<{start:string,end:string}>} GDELT `YYYYMMDDHHMMSS` bounds.
  */
-export function gdeltDayWindows(dayKey, sliceHours = 2, { nowMs = Date.now() } = {}) {
+export function gdeltDayWindows(
+  dayKey,
+  sliceHours = 2,
+  { nowMs = Date.now() } = {},
+) {
   const day = normalizeDayKey(dayKey);
   if (!day) return [];
   // Clamp rather than fall back on 0: an explicit --slice-hours=0 means "as
   // fine as you can", not "use the default".
   const requested = Number(sliceHours);
-  const span = Number.isFinite(requested) ? Math.min(24, Math.max(1, Math.trunc(requested))) : 2;
+  const span = Number.isFinite(requested)
+    ? Math.min(24, Math.max(1, Math.trunc(requested)))
+    : 2;
   const stamp = day.replaceAll('-', '');
   const pad = (value) => String(value).padStart(2, '0');
   const dayStartMs = Date.parse(`${day}T00:00:00.000Z`);
@@ -318,7 +410,9 @@ export function stableArticleId(country, dayKey, url) {
   const day = normalizeDayKey(dayKey);
   const canonical = canonicalArticleUrl(url);
   if (!code || !day || !canonical) return null;
-  const digest = fnv1a32(`${code}|${day}|${canonical}`).toString(16).padStart(8, '0');
+  const digest = fnv1a32(`${code}|${day}|${canonical}`)
+    .toString(16)
+    .padStart(8, '0');
   return `${code.toLowerCase()}-${day}-${digest}`;
 }
 
@@ -348,7 +442,9 @@ export function normalizeHeadline(title) {
 export function headlineTokens(title) {
   const normalized = normalizeHeadline(title);
   if (!normalized) return [];
-  return normalized.split(' ').filter((token) => token.length >= 3 && !HEADLINE_STOPWORDS.has(token));
+  return normalized
+    .split(' ')
+    .filter((token) => token.length >= 3 && !HEADLINE_STOPWORDS.has(token));
 }
 
 /**
@@ -363,7 +459,8 @@ export function headlineShingles(title, size = HEADLINE_SHINGLE_SIZE) {
   const width = Math.max(1, Math.trunc(Number(size) || 1));
   if (tokens.length < width + 1) return new Set(tokens);
   const shingles = new Set();
-  for (let i = 0; i + width <= tokens.length; i++) shingles.add(tokens.slice(i, i + width).join(' '));
+  for (let i = 0; i + width <= tokens.length; i++)
+    shingles.add(tokens.slice(i, i + width).join(' '));
   return shingles;
 }
 
@@ -396,9 +493,19 @@ export function jaccard(a, b) {
  * @param {number} [shingleSize] Words per shingle.
  * @returns {number} 0..1.
  */
-export function headlineSimilarity(titleA, titleB, shingleSize = HEADLINE_SHINGLE_SIZE) {
-  const tokenScore = jaccard(new Set(headlineTokens(titleA)), new Set(headlineTokens(titleB)));
-  const shingleScore = jaccard(headlineShingles(titleA, shingleSize), headlineShingles(titleB, shingleSize));
+export function headlineSimilarity(
+  titleA,
+  titleB,
+  shingleSize = HEADLINE_SHINGLE_SIZE,
+) {
+  const tokenScore = jaccard(
+    new Set(headlineTokens(titleA)),
+    new Set(headlineTokens(titleB)),
+  );
+  const shingleScore = jaccard(
+    headlineShingles(titleA, shingleSize),
+    headlineShingles(titleB, shingleSize),
+  );
   return Math.max(tokenScore, shingleScore);
 }
 
@@ -415,7 +522,13 @@ export function headlineSimilarity(titleA, titleB, shingleSize = HEADLINE_SHINGL
  * @param {number} [options.shingleSize] Words per shingle.
  * @returns {number[]} Cluster index per item, aligned with `items`.
  */
-export function clusterHeadlines(items, { threshold = HEADLINE_CLUSTER_THRESHOLD, shingleSize = HEADLINE_SHINGLE_SIZE } = {}) {
+export function clusterHeadlines(
+  items,
+  {
+    threshold = HEADLINE_CLUSTER_THRESHOLD,
+    shingleSize = HEADLINE_SHINGLE_SIZE,
+  } = {},
+) {
   const list = Array.isArray(items) ? items : [];
   const parent = list.map((_, index) => index);
   const find = (index) => {
@@ -432,14 +545,20 @@ export function clusterHeadlines(items, { threshold = HEADLINE_CLUSTER_THRESHOLD
   const union = (a, b) => {
     const rootA = find(a);
     const rootB = find(b);
-    if (rootA !== rootB) parent[Math.max(rootA, rootB)] = Math.min(rootA, rootB);
+    if (rootA !== rootB)
+      parent[Math.max(rootA, rootB)] = Math.min(rootA, rootB);
   };
 
   const tokens = list.map((item) => new Set(headlineTokens(item?.title)));
-  const shingles = list.map((item) => headlineShingles(item?.title, shingleSize));
+  const shingles = list.map((item) =>
+    headlineShingles(item?.title, shingleSize),
+  );
   for (let i = 0; i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {
-      const score = Math.max(jaccard(tokens[i], tokens[j]), jaccard(shingles[i], shingles[j]));
+      const score = Math.max(
+        jaccard(tokens[i], tokens[j]),
+        jaccard(shingles[i], shingles[j]),
+      );
       if (score >= threshold) union(i, j);
     }
   }
@@ -465,7 +584,8 @@ export function clusterHeadlines(items, { threshold = HEADLINE_CLUSTER_THRESHOLD
  */
 export function coverageImpact(distinctDomains) {
   const count = Math.max(0, Math.trunc(Number(distinctDomains) || 0));
-  for (const band of COVERAGE_IMPACT_THRESHOLDS) if (count >= band.minDomains) return band.impact;
+  for (const band of COVERAGE_IMPACT_THRESHOLDS)
+    if (count >= band.minDomains) return band.impact;
   return 1;
 }
 
@@ -476,7 +596,10 @@ export function coverageImpact(distinctDomains) {
  */
 export function impactBand(impact) {
   const score = Math.min(5, Math.max(1, Math.round(Number(impact) || 1)));
-  return NEWS_IMPACT_BANDS.find((band) => band.impact === score) || NEWS_IMPACT_BANDS.at(-1);
+  return (
+    NEWS_IMPACT_BANDS.find((band) => band.impact === score) ||
+    NEWS_IMPACT_BANDS.at(-1)
+  );
 }
 
 /**
@@ -502,8 +625,11 @@ export function gradeByCoverage(articles, options = {}) {
   list.forEach((article, index) => {
     const cluster = clusterIds[index];
     sizeByCluster.set(cluster, (sizeByCluster.get(cluster) || 0) + 1);
-    if (!domainsByCluster.has(cluster)) domainsByCluster.set(cluster, new Set());
-    const domain = String(article?.domain ?? '').trim().toLowerCase();
+    if (!domainsByCluster.has(cluster))
+      domainsByCluster.set(cluster, new Set());
+    const domain = String(article?.domain ?? '')
+      .trim()
+      .toLowerCase();
     if (domain) domainsByCluster.get(cluster).add(domain);
   });
 
@@ -527,10 +653,13 @@ export function gradeByCoverage(articles, options = {}) {
  * @returns {Array<{label:string,color:string,count:number,blurb:string}>} Legend entries.
  */
 export function newsImpactLegend(tally) {
-  const read = (impact) => Number(
-    (tally instanceof Map ? tally.get(impact) : tally?.[impact]) ?? 0,
-  ) || 0;
-  return NEWS_IMPACT_BANDS
-    .map((band) => ({ label: band.label, color: band.color, count: read(band.impact), blurb: band.blurb }))
-    .filter((entry) => entry.count > 0);
+  const read = (impact) =>
+    Number((tally instanceof Map ? tally.get(impact) : tally?.[impact]) ?? 0) ||
+    0;
+  return NEWS_IMPACT_BANDS.map((band) => ({
+    label: band.label,
+    color: band.color,
+    count: read(band.impact),
+    blurb: band.blurb,
+  })).filter((entry) => entry.count > 0);
 }
